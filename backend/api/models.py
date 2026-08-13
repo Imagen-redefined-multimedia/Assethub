@@ -1,17 +1,17 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
 class User(AbstractUser):
     class Role(models.TextChoices):
-        Admin = 'ADMIN', 'Admin',
-        Technician = 'TECHNICIAN', 'Technician',
-        Client = 'CLIENT', 'Client',
+        ADMIN = "ADMIN", "Admin"
+        TECHNICIAN = "TECHNICIAN", "Technician"
+        CLIENT = "CLIENT", "Client"
 
     role = models.CharField(
-
         max_length=20,
         choices=Role.choices,
-        default=Role.Client,
+        default=Role.CLIENT,
     )
 
     def __str__(self):
