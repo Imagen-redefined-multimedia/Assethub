@@ -1,17 +1,23 @@
 from django.contrib.auth import get_user_model
 
+
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Asset
-from .permissions import IsAdmin, IsAdminOrOwnClient
+from .models import Asset, QRScanLog
+from .permissions import (
+    IsAdmin,
+    IsAdminOrOwnClient,
+    IsAdminOrTechnician,
+)
 from .serializers import (
     UserCreateSerializer,
     UserSerializer,
     AssetSerializer,
 )
+
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -22,7 +28,7 @@ User = get_user_model()
 
 
 class MeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrTechnician]
 
     def get(self, request):
         serializer = UserSerializer(request.user)
@@ -124,3 +130,69 @@ class AssetQRCodeView(APIView):
         image.save(response, format="PNG")
 
         return response
+
+class QRScanView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+        IsAdminOrTechnician,
+    ]
+
+    def post(self, request, token):
+        try:
+            asset = Asset.objects.get(qr_token=token)
+        except Asset.DoesNotExist:
+            QRScanLog.objects.create(
+                user=request.user,
+                result=QRScanLog.Result.INVALID,
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return Response(
+                {"detail": "Invalid QR code."},
+                status=404,
+            )
+
+        if not asset.qr_active:
+            QRScanLog.objects.create(
+                asset=asset,
+                user=request.user,
+                result=QRScanLog.Result.DENIED,
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return Response(
+                {"detail": "This QR code has been revoked."},
+                status=403,
+            )
+
+        # Successful scan
+        QRScanLog.objects.create(
+            asset=asset,
+            user=request.user,
+            result=QRScanLog.Result.SUCCESS,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
+
+        # Update last scan time
+        from django.utils import timezone
+
+        asset.last_qr_scan_at = timezone.now()
+        asset.save(update_fields=["last_qr_scan_at"])
+
+        return Response(
+            {
+                "message": "QR code scanned successfully.",
+                "asset": {
+                    "id": asset.id,
+                    "name": asset.name,
+                    "serial_number": asset.serial_number,
+                    "description": asset.description,
+                    "client": asset.client.id,
+                    "client_username": asset.client.username,
+                },
+            },
+            status=200,
+        )

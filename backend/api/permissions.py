@@ -31,3 +31,16 @@ class IsAdminOrOwnClient(BasePermission):
             return obj.client == request.user
 
         return False
+
+class IsAdminOrTechnician(BasePermission):
+    message = "Only administrators and technicians can access QR codes."
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in [
+                User.Role.ADMIN,
+                User.Role.TECHNICIAN,
+            ]
+        )

@@ -28,6 +28,7 @@ from api.views import (
     AssetDetailView,
     AssetDetailView,
     AssetQRCodeView,
+     QRScanView,
 )
 
 from api.views import MeView
@@ -57,5 +58,11 @@ urlpatterns = [
     "api/assets/<int:pk>/qr/",
     AssetQRCodeView.as_view(),
     name="asset-qr",
+),
+
+    path(
+    "api/qr/scan/<str:token>/",
+    QRScanView.as_view(),
+    name="qr-scan",
 ),
 ]
