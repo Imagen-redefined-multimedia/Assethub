@@ -24,6 +24,10 @@ from rest_framework_simplejwt.views import (
 from api.views import (
     UserListCreateView,
     UserDetailView,
+    AssetListCreateView,
+    AssetDetailView,
+    AssetDetailView,
+    AssetQRCodeView,
 )
 
 from api.views import MeView
@@ -37,4 +41,21 @@ urlpatterns = [
     path("api/auth/me/", MeView.as_view(), name="me"),
     path("api/users/", UserListCreateView.as_view(), name="users"),
     path("api/users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),
+    # Assets
+    path(
+        "api/assets/",
+        AssetListCreateView.as_view(),
+        name="assets",
+    ),
+
+    path(
+        "api/assets/<int:pk>/",
+        AssetDetailView.as_view(),
+        name="asset-detail",
+    ),
+    path(
+    "api/assets/<int:pk>/qr/",
+    AssetQRCodeView.as_view(),
+    name="asset-qr",
+),
 ]

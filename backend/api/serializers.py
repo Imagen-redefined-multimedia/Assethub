@@ -1,5 +1,8 @@
 from django.contrib.auth import get_user_model
+
 from rest_framework import serializers
+
+from .models import Asset
 
 
 User = get_user_model()
@@ -61,3 +64,45 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+
+class AssetSerializer(serializers.ModelSerializer):
+    client_username = serializers.CharField(
+        source="client.username",
+        read_only=True,
+    )
+
+    class Meta:
+        model = Asset
+        fields = [
+            "id",
+            "client",
+            "client_username",
+            "name",
+            "serial_number",
+            "description",
+            "qr_active",
+            "qr_created_at",
+            "qr_revoked_at",
+            "last_qr_scan_at",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "qr_active",
+            "qr_created_at",
+            "qr_revoked_at",
+            "last_qr_scan_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate_client(self, value):
+        if value.role != User.Role.CLIENT:
+            raise serializers.ValidationError(
+                "The selected user must be a Client."
+            )
+
+        return value

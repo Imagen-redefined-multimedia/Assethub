@@ -5,12 +5,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .permissions import IsAdmin
+from .models import Asset
+from .permissions import IsAdmin, IsAdminOrOwnClient
 from .serializers import (
     UserCreateSerializer,
     UserSerializer,
+    AssetSerializer,
 )
 
+from django.conf import settings
+from django.http import HttpResponse
+
+import qrcode
 
 User = get_user_model()
 
@@ -40,3 +46,81 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+
+class AssetListCreateView(generics.ListCreateAPIView):
+    serializer_class = AssetSerializer
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsAdmin()]
+
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == User.Role.ADMIN:
+            return Asset.objects.all().order_by("-created_at")
+
+        if user.role == User.Role.CLIENT:
+            return Asset.objects.filter(
+                client=user
+            ).order_by("-created_at")
+
+        return Asset.objects.none()
+
+
+class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AssetSerializer
+    queryset = Asset.objects.all()
+
+    def get_permissions(self):
+        return [
+            IsAuthenticated(),
+            IsAdminOrOwnClient(),
+        ]
+
+class AssetQRCodeView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request, pk):
+        try:
+            asset = Asset.objects.get(pk=pk)
+        except Asset.DoesNotExist:
+            return Response(
+                {"detail": "Asset not found."},
+                status=404,
+            )
+
+        if not asset.qr_active:
+            return Response(
+                {"detail": "QR code is inactive."},
+                status=400,
+            )
+
+        # URL encoded inside the QR code
+        qr_url = (
+            f"{settings.ASSETHUB_BASE_URL}"
+            f"/api/qr/scan/{asset.qr_token}/"
+        )
+
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+
+        image = qr.make_image()
+
+        response = HttpResponse(
+            content_type="image/png"
+        )
+
+        image.save(response, format="PNG")
+
+        return response
