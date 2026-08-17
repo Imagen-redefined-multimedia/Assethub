@@ -259,6 +259,11 @@ class MaintenanceReport(models.Model):
         HIGH = "HIGH", "High"
         CRITICAL = "CRITICAL", "Critical"
 
+    class ReviewStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending Review"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+
     maintenance = models.OneToOneField(
         Maintenance,
         on_delete=models.CASCADE,
@@ -287,6 +292,25 @@ class MaintenanceReport(models.Model):
         default=Status.OPEN,
     )
 
+    # --------------------------------------------------------
+    # CLIENT REVIEW
+    # --------------------------------------------------------
+
+    review_status = models.CharField(
+        max_length=20,
+        choices=ReviewStatus.choices,
+        default=ReviewStatus.PENDING,
+    )
+
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    review_comment = models.TextField(
+        blank=True,
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -297,8 +321,6 @@ class MaintenanceReport(models.Model):
 
     def __str__(self):
         return f"Report #{self.id}"
-
-
 class MaintenanceReportPhoto(models.Model):
 
     class PhotoType(models.TextChoices):

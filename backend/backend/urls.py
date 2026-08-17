@@ -22,6 +22,11 @@ from rest_framework_simplejwt.views import (
 )
 
 from api.views import (
+    MaintenanceListCreateView,
+    MaintenanceDetailView,
+    MaintenanceReportDetailView,
+    MaintenanceReportListCreateView,
+    MaintenanceReportReviewView,
     MaintenanceScheduleDetailView,
     MaintenanceScheduleListCreateView,
     UserListCreateView,
@@ -31,6 +36,8 @@ from api.views import (
     AssetDetailView,
     AssetQRCodeView,
      QRScanView,
+    WorkOrderDetailView,
+    WorkOrderListCreateView,
 )
 
 from api.views import MeView
@@ -78,5 +85,44 @@ path(
     "api/maintenance-schedules/<int:pk>/",
     MaintenanceScheduleDetailView.as_view(),
     name="maintenance-schedule-detail",
+),
+path(
+    "api/maintenance-reports/",
+    MaintenanceReportListCreateView.as_view(),
+    name="maintenance-report-list",
+),
+path(
+    "api/maintenance/",
+    MaintenanceListCreateView.as_view(),
+    name="maintenance-list-create",
+),
+
+path(
+    "api/maintenance/<int:pk>/",
+    MaintenanceDetailView.as_view(),
+    name="maintenance-detail",
+),
+
+path(
+    "api/work-orders/",
+    WorkOrderListCreateView.as_view(),
+    name="work-order-list-create",
+),
+
+path(
+    "api/work-orders/<int:pk>/",
+    WorkOrderDetailView.as_view(),
+    name="work-order-detail",
+),
+
+path(
+    "api/maintenance-reports/<int:pk>/review/",
+    MaintenanceReportReviewView.as_view(),
+    name="maintenance-report-review",
+),
+path(
+    "api/maintenance-reports/<int:pk>/",
+    MaintenanceReportDetailView.as_view(),
+    name="maintenance-report-detail",
 ),
 ]

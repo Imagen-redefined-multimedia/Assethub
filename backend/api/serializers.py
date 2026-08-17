@@ -4,8 +4,10 @@ from rest_framework import serializers
 
 from .models import (
     Asset,
+    Maintenance,
     MaintenanceReport,
     MaintenanceSchedule,
+    WorkOrder,
 )
 
 
@@ -150,6 +152,9 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            "review_status",
+            "reviewed_at",
+            "review_comment",
         ]
 
         read_only_fields = [
@@ -160,6 +165,7 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             "client_id",
             "created_at",
             "updated_at",
+            
         ]
 
 class MaintenanceScheduleSerializer(serializers.ModelSerializer):
@@ -173,6 +179,8 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    schedule_status = serializers.ReadOnlyField()
+
     class Meta:
         model = MaintenanceSchedule
 
@@ -185,6 +193,7 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
             "next_maintenance_date",
             "last_maintenance_date",
             "is_active",
+            "schedule_status",
             "created_by_username",
             "created_at",
             "updated_at",
@@ -193,8 +202,115 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "asset_name",
-            "created_by_username",
+            "next_maintenance_date",
             "last_maintenance_date",
+            "schedule_status",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+
+class MaintenanceSerializer(serializers.ModelSerializer):
+    technician_username = serializers.CharField(
+        source="technician.username",
+        read_only=True,
+    )
+
+    work_order_title = serializers.CharField(
+        source="work_order.title",
+        read_only=True,
+    )
+
+    asset_name = serializers.CharField(
+        source="work_order.asset.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = Maintenance
+
+        fields = [
+            "id",
+            "work_order",
+            "work_order_title",
+            "asset_name",
+            "technician",
+            "technician_username",
+            "description",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "work_order_title",
+            "asset_name",
+            "technician_username",
+            "created_at",
+            "updated_at",
+        ]
+
+class WorkOrderSerializer(
+    serializers.ModelSerializer
+):
+    client_username = serializers.CharField(
+        source="client.username",
+        read_only=True,
+    )
+
+    asset_name = serializers.CharField(
+        source="asset.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = WorkOrder
+        fields = [
+            "id",
+            "client",
+            "client_username",
+            "asset",
+            "asset_name",
+            "title",
+            "description",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+        ]
+
+class WorkOrderSerializer(
+    serializers.ModelSerializer
+):
+    client_username = serializers.CharField(
+        source="client.username",
+        read_only=True,
+    )
+
+    asset_name = serializers.CharField(
+        source="asset.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = WorkOrder
+        fields = [
+            "id",
+            "client",
+            "client_username",
+            "asset",
+            "asset_name",
+            "title",
+            "description",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
             "created_at",
             "updated_at",
         ]
