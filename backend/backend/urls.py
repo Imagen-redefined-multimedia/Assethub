@@ -24,11 +24,13 @@ from rest_framework_simplejwt.views import (
 from api.views import (
     MaintenanceListCreateView,
     MaintenanceDetailView,
+    MaintenanceReassignView,
     MaintenanceReportDetailView,
     MaintenanceReportListCreateView,
     MaintenanceReportReviewView,
     MaintenanceScheduleDetailView,
     MaintenanceScheduleListCreateView,
+    RejectedMaintenanceReportListView,
     UserListCreateView,
     UserDetailView,
     AssetListCreateView,
@@ -124,5 +126,17 @@ path(
     "api/maintenance-reports/<int:pk>/",
     MaintenanceReportDetailView.as_view(),
     name="maintenance-report-detail",
+),
+
+path(
+    "maintenance-reports/rejected/",
+    RejectedMaintenanceReportListView.as_view(),
+    name="rejected-maintenance-reports",
+),
+
+path(
+    "maintenance-reports/<int:pk>/reassign/",
+    MaintenanceReassignView.as_view(),
+    name="maintenance-reassign",
 ),
 ]

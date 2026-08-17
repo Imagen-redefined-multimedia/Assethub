@@ -420,21 +420,6 @@ class MaintenanceListCreateView(
 
         serializer.save()
 
-class MaintenanceDetailView(
-    generics.RetrieveUpdateDestroyAPIView
-):
-    serializer_class = MaintenanceSerializer
-
-    permission_classes = [
-        IsAuthenticated,
-        IsAdmin,
-    ]
-
-    queryset = Maintenance.objects.select_related(
-        "work_order",
-        "technician",
-        "work_order__asset",
-    )
 # ============================================================
 # MAINTENANCE REPORTS
 # ADMIN + TECHNICIAN + CLIENT READ
@@ -719,7 +704,6 @@ class WorkOrderDetailView(
 # ============================================================
 
 class MaintenanceReportReviewView(APIView):
-
     permission_classes = [
         IsAuthenticated,
     ]
@@ -736,6 +720,8 @@ class MaintenanceReportReviewView(APIView):
 
         try:
             report = MaintenanceReport.objects.select_related(
+                "maintenance",
+                "maintenance__technician",
                 "maintenance__work_order__client",
                 "maintenance__work_order__asset",
             ).get(pk=pk)
@@ -770,16 +756,10 @@ class MaintenanceReportReviewView(APIView):
             )
 
         action = request.data.get("action")
-        comment = request.data.get(
-            "comment",
-            "",
-        )
+        comment = request.data.get("comment", "")
 
         # Validate action
-        if action not in [
-            "ACCEPT",
-            "REJECT",
-        ]:
+        if action not in ["ACCEPT", "REJECT"]:
             raise ValidationError(
                 "Action must be ACCEPT or REJECT."
             )
@@ -790,18 +770,51 @@ class MaintenanceReportReviewView(APIView):
                 "A comment is required when rejecting a maintenance report."
             )
 
-        # Save decision
+        # Get the maintenance task
+        maintenance = report.maintenance
+
+        # ----------------------------------------------------
+        # ACCEPT
+        # ----------------------------------------------------
+
         if action == "ACCEPT":
 
             report.review_status = (
                 MaintenanceReport.ReviewStatus.ACCEPTED
             )
 
+            report.requires_admin_action = False
+
+            message = "Maintenance report accepted."
+
+        # ----------------------------------------------------
+        # REJECT
+        # ----------------------------------------------------
+
         else:
 
             report.review_status = (
                 MaintenanceReport.ReviewStatus.REJECTED
             )
+
+            report.requires_admin_action = True
+
+            # Send maintenance back to Admin
+            # for reassignment
+            maintenance.status = Maintenance.Status.ASSIGNED
+
+            maintenance.save(
+                update_fields=[
+                    "status",
+                    "updated_at",
+                ]
+            )
+
+            message = "Maintenance report rejected. Admin action is required."
+
+        # ----------------------------------------------------
+        # SAVE REVIEW
+        # ----------------------------------------------------
 
         report.review_comment = comment
         report.reviewed_at = timezone.now()
@@ -811,23 +824,50 @@ class MaintenanceReportReviewView(APIView):
                 "review_status",
                 "review_comment",
                 "reviewed_at",
+                "requires_admin_action",
                 "updated_at",
             ]
         )
 
         return Response(
             {
-                "message": (
-                    "Maintenance report accepted."
-                    if action == "ACCEPT"
-                    else "Maintenance report rejected."
-                ),
+                "message": message,
                 "report_id": report.id,
                 "review_status": report.review_status,
                 "review_comment": report.review_comment,
+                "requires_admin_action": report.requires_admin_action,
                 "reviewed_at": report.reviewed_at,
             },
             status=200,
+        )
+
+# ============================================================
+# ADMIN - REJECTED MAINTENANCE REPORTS
+# ============================================================
+
+class RejectedMaintenanceReportListView(
+    generics.ListAPIView
+):
+    serializer_class = MaintenanceReportSerializer
+
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    def get_queryset(self):
+
+        return MaintenanceReport.objects.select_related(
+            "maintenance",
+            "maintenance__technician",
+            "maintenance__work_order",
+            "maintenance__work_order__client",
+            "maintenance__work_order__asset",
+        ).filter(
+            review_status=MaintenanceReport.ReviewStatus.REJECTED,
+            requires_admin_action=True,
+        ).order_by(
+            "-reviewed_at"
         )
 # ============================================================
 # MAINTENANCE DETAIL
@@ -865,3 +905,109 @@ class MaintenanceDetailView(
             )
 
         return queryset.none()
+# ============================================================
+# ADMIN - REASSIGN MAINTENANCE
+# ============================================================
+
+class MaintenanceReassignView(APIView):
+
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    def post(self, request, pk):
+
+        try:
+            report = MaintenanceReport.objects.select_related(
+                "maintenance",
+                "maintenance__work_order",
+                "maintenance__work_order__asset",
+            ).get(pk=pk)
+
+        except MaintenanceReport.DoesNotExist:
+            return Response(
+                {
+                    "detail": "Maintenance report not found."
+                },
+                status=404,
+            )
+
+        # Make sure this report was actually rejected
+        if (
+            report.review_status
+            != MaintenanceReport.ReviewStatus.REJECTED
+        ):
+            raise ValidationError(
+                "Only rejected maintenance reports can be reassigned."
+            )
+
+        technician_id = request.data.get("technician")
+
+        if not technician_id:
+            raise ValidationError(
+                "technician is required."
+            )
+
+        try:
+            technician = User.objects.get(
+                pk=technician_id,
+                role=User.Role.TECHNICIAN,
+            )
+
+        except User.DoesNotExist:
+            raise ValidationError(
+                "The selected technician does not exist."
+            )
+
+        maintenance = report.maintenance
+
+        # Assign technician
+        maintenance.technician = technician
+
+        # Put task back into active workflow
+        maintenance.status = Maintenance.Status.ASSIGNED
+
+        maintenance.save(
+            update_fields=[
+                "technician",
+                "status",
+                "updated_at",
+            ]
+        )
+
+        # Reset report for another review cycle
+        report.review_status = (
+            MaintenanceReport.ReviewStatus.PENDING
+        )
+
+        report.requires_admin_action = False
+
+        report.reviewed_at = None
+        report.review_comment = ""
+
+        report.reassignment_count += 1
+
+        report.save(
+            update_fields=[
+                "review_status",
+                "requires_admin_action",
+                "reviewed_at",
+                "review_comment",
+                "reassignment_count",
+                "updated_at",
+            ]
+        )
+
+        return Response(
+            {
+                "message": "Maintenance reassigned successfully.",
+                "report_id": report.id,
+                "maintenance_id": maintenance.id,
+                "technician": technician.id,
+                "technician_username": technician.username,
+                "status": maintenance.status,
+                "reassignment_count": report.reassignment_count,
+            },
+            status=200,
+        )

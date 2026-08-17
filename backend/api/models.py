@@ -292,6 +292,38 @@ class MaintenanceReport(models.Model):
         default=Status.OPEN,
     )
 
+    requires_admin_action = models.BooleanField(
+    default=False
+    )
+
+    reassignment_count = models.PositiveIntegerField(
+        default=0
+    )
+
+    review_status = models.CharField(
+    max_length=20,
+    choices=ReviewStatus.choices,
+    default=ReviewStatus.PENDING,
+)
+
+    review_comment = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    requires_admin_action = models.BooleanField(
+        default=False
+    )
+
+    reassignment_count = models.PositiveIntegerField(
+        default=0
+    )
+
     # --------------------------------------------------------
     # CLIENT REVIEW
     # --------------------------------------------------------
