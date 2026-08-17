@@ -22,6 +22,8 @@ from rest_framework_simplejwt.views import (
 )
 
 from api.views import (
+    MaintenanceScheduleDetailView,
+    MaintenanceScheduleListCreateView,
     UserListCreateView,
     UserDetailView,
     AssetListCreateView,
@@ -64,5 +66,17 @@ urlpatterns = [
     "api/qr/scan/<str:token>/",
     QRScanView.as_view(),
     name="qr-scan",
+),
+
+path(
+    "api/maintenance-schedules/",
+    MaintenanceScheduleListCreateView.as_view(),
+    name="maintenance-schedule-list-create",
+),
+
+path(
+    "api/maintenance-schedules/<int:pk>/",
+    MaintenanceScheduleDetailView.as_view(),
+    name="maintenance-schedule-detail",
 ),
 ]

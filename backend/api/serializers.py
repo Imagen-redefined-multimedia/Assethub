@@ -2,7 +2,11 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
 
-from .models import Asset
+from .models import (
+    Asset,
+    MaintenanceReport,
+    MaintenanceSchedule,
+)
 
 
 User = get_user_model()
@@ -106,3 +110,91 @@ class AssetSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+class MaintenanceReportSerializer(serializers.ModelSerializer):
+    technician_username = serializers.CharField(
+        source="maintenance.technician.username",
+        read_only=True,
+    )
+
+    asset_id = serializers.IntegerField(
+        source="maintenance.work_order.asset.id",
+        read_only=True,
+    )
+
+    asset_name = serializers.CharField(
+        source="maintenance.work_order.asset.name",
+        read_only=True,
+    )
+
+    client_id = serializers.IntegerField(
+        source="maintenance.work_order.client.id",
+        read_only=True,
+    )
+
+    class Meta:
+        model = MaintenanceReport
+
+        fields = [
+            "id",
+            "maintenance",
+            "technician_username",
+            "asset_id",
+            "asset_name",
+            "client_id",
+            "summary",
+            "findings",
+            "work_performed",
+            "parts_replaced",
+            "priority",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "technician_username",
+            "asset_id",
+            "asset_name",
+            "client_id",
+            "created_at",
+            "updated_at",
+        ]
+
+class MaintenanceScheduleSerializer(serializers.ModelSerializer):
+    asset_name = serializers.CharField(
+        source="asset.name",
+        read_only=True,
+    )
+
+    created_by_username = serializers.CharField(
+        source="created_by.username",
+        read_only=True,
+    )
+
+    class Meta:
+        model = MaintenanceSchedule
+
+        fields = [
+            "id",
+            "asset",
+            "asset_name",
+            "frequency",
+            "frequency_unit",
+            "next_maintenance_date",
+            "last_maintenance_date",
+            "is_active",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "asset_name",
+            "created_by_username",
+            "last_maintenance_date",
+            "created_at",
+            "updated_at",
+        ]

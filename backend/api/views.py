@@ -5,14 +5,23 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from .models import Asset, QRScanLog
+from .models import (
+    Asset,
+    MaintenanceSchedule,
+    QRScanLog,
+    MaintenanceReport
+)
 from .permissions import (
     IsAdmin,
     IsAdminOrOwnClient,
     IsAdminOrTechnician,
+    IsMaintenanceReportAllowed
 )
 from .serializers import (
+    MaintenanceReportSerializer,
+    MaintenanceScheduleSerializer,
     UserCreateSerializer,
     UserSerializer,
     AssetSerializer,
@@ -196,3 +205,104 @@ class QRScanView(APIView):
             },
             status=200,
         )
+
+class MaintenanceScheduleListCreateView(
+    generics.ListCreateAPIView
+):
+    serializer_class = MaintenanceScheduleSerializer
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    def get_queryset(self):
+        return MaintenanceSchedule.objects.select_related(
+            "asset",
+            "created_by",
+        ).order_by(
+            "next_maintenance_date"
+        )
+
+    def perform_create(self, serializer):
+
+        asset = serializer.validated_data["asset"]
+
+        # Prevent duplicate schedules for the same asset
+        if MaintenanceSchedule.objects.filter(
+            asset=asset
+        ).exists():
+            raise ValidationError(
+                "This asset already has a maintenance schedule."
+            )
+
+        serializer.save(
+            created_by=self.request.user
+        )
+
+class MaintenanceScheduleDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    queryset = MaintenanceSchedule.objects.all()
+    serializer_class = MaintenanceScheduleSerializer
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    
+class MaintenanceReportListCreateView(
+    generics.ListCreateAPIView
+):
+    serializer_class = MaintenanceReportSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == User.Role.ADMIN:
+            return MaintenanceReport.objects.all().order_by(
+                "-created_at"
+            )
+
+        if user.role == User.Role.TECHNICIAN:
+            return MaintenanceReport.objects.filter(
+                maintenance__technician=user
+            ).order_by("-created_at")
+
+        if user.role == User.Role.CLIENT:
+            return MaintenanceReport.objects.filter(
+                maintenance__work_order__client=user
+            ).order_by("-created_at")
+
+        return MaintenanceReport.objects.none()
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [
+                IsAuthenticated(),
+                IsMaintenanceReportAllowed(),
+            ]
+
+        return [
+            IsAuthenticated(),
+        ]
+
+    def perform_create(self, serializer):
+
+        user = self.request.user
+
+        if user.role == User.Role.CLIENT:
+            raise PermissionDenied(
+                "Clients cannot create maintenance reports."
+            )
+
+        maintenance = serializer.validated_data[
+            "maintenance"
+        ]
+
+        if user.role == User.Role.TECHNICIAN:
+            if maintenance.technician != user:
+                raise PermissionDenied(
+                    "You can only create reports for your own maintenance tasks."
+                )
+
+        serializer.save()

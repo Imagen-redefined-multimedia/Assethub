@@ -1,7 +1,10 @@
 import secrets
+from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -29,7 +32,10 @@ class Asset(models.Model):
     )
 
     name = models.CharField(max_length=255)
-    serial_number = models.CharField(max_length=100, unique=True)
+    serial_number = models.CharField(
+        max_length=100,
+        unique=True,
+    )
     description = models.TextField(blank=True)
 
     # Random token used by the QR code
@@ -41,8 +47,14 @@ class Asset(models.Model):
 
     qr_active = models.BooleanField(default=True)
     qr_created_at = models.DateTimeField(auto_now_add=True)
-    qr_revoked_at = models.DateTimeField(null=True, blank=True)
-    last_qr_scan_at = models.DateTimeField(null=True, blank=True)
+    qr_revoked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    last_qr_scan_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -57,7 +69,113 @@ class Asset(models.Model):
         return f"{self.name} - {self.serial_number}"
 
 
+class MaintenanceSchedule(models.Model):
+
+    class FrequencyUnit(models.TextChoices):
+        DAYS = "DAYS", "Days"
+        WEEKS = "WEEKS", "Weeks"
+        MONTHS = "MONTHS", "Months"
+        YEARS = "YEARS", "Years"
+
+    asset = models.OneToOneField(
+        Asset,
+        on_delete=models.CASCADE,
+        related_name="maintenance_schedule",
+    )
+
+    frequency = models.PositiveIntegerField(
+        help_text="How often maintenance should occur.",
+    )
+
+    frequency_unit = models.CharField(
+        max_length=10,
+        choices=FrequencyUnit.choices,
+    )
+
+    next_maintenance_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    last_maintenance_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="maintenance_schedules_created",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def calculate_next_date(self, from_date=None):
+        if from_date is None:
+            from_date = timezone.localdate()
+
+        if self.frequency_unit == self.FrequencyUnit.DAYS:
+            return from_date + timedelta(
+                days=self.frequency
+            )
+
+        if self.frequency_unit == self.FrequencyUnit.WEEKS:
+            return from_date + timedelta(
+                weeks=self.frequency
+            )
+
+        if self.frequency_unit == self.FrequencyUnit.MONTHS:
+            return from_date + relativedelta(
+                months=self.frequency
+            )
+
+        if self.frequency_unit == self.FrequencyUnit.YEARS:
+            return from_date + relativedelta(
+                years=self.frequency
+            )
+
+        return from_date
+
+    @property
+    def schedule_status(self):
+        if not self.is_active:
+            return "INACTIVE"
+
+        if not self.next_maintenance_date:
+            return "NOT_SCHEDULED"
+
+        today = timezone.localdate()
+
+        if self.next_maintenance_date < today:
+            return "OVERDUE"
+
+        if self.next_maintenance_date <= today + timedelta(
+            days=7
+        ):
+            return "DUE_SOON"
+
+        return "UPCOMING"
+
+    def __str__(self):
+        return (
+            f"{self.asset.name} - "
+            f"Every {self.frequency} "
+            f"{self.frequency_unit.lower()}"
+        )
+
+
 class WorkOrder(models.Model):
+
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
@@ -94,6 +212,7 @@ class WorkOrder(models.Model):
 
 
 class Maintenance(models.Model):
+
     class Status(models.TextChoices):
         ASSIGNED = "ASSIGNED", "Assigned"
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
@@ -128,6 +247,18 @@ class Maintenance(models.Model):
 
 
 class MaintenanceReport(models.Model):
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Open"
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        COMPLETED = "COMPLETED", "Completed"
+
+    class Priority(models.TextChoices):
+        LOW = "LOW", "Low"
+        MEDIUM = "MEDIUM", "Medium"
+        HIGH = "HIGH", "High"
+        CRITICAL = "CRITICAL", "Critical"
+
     maintenance = models.OneToOneField(
         Maintenance,
         on_delete=models.CASCADE,
@@ -135,18 +266,41 @@ class MaintenanceReport(models.Model):
     )
 
     summary = models.TextField()
-    findings = models.TextField()
-    work_performed = models.TextField()
-    parts_replaced = models.TextField(blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    findings = models.TextField()
+
+    work_performed = models.TextField()
+
+    parts_replaced = models.TextField(
+        blank=True,
+    )
+
+    priority = models.CharField(
+        max_length=20,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.OPEN,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
     def __str__(self):
         return f"Report #{self.id}"
 
 
 class MaintenanceReportPhoto(models.Model):
+
     class PhotoType(models.TextChoices):
         ISSUE = "ISSUE", "Issue"
         FIXED = "FIXED", "Fixed"
@@ -157,19 +311,28 @@ class MaintenanceReportPhoto(models.Model):
         related_name="photos",
     )
 
-    image = models.ImageField(upload_to="maintenance_reports/%Y/%m/%d/")
+    image = models.ImageField(
+        upload_to="maintenance_reports/%Y/%m/%d/",
+    )
+
     photo_type = models.CharField(
         max_length=10,
         choices=PhotoType.choices,
     )
 
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     def __str__(self):
-        return f"{self.photo_type} photo - Report #{self.report.id}"
+        return (
+            f"{self.photo_type} photo - "
+            f"Report #{self.report.id}"
+        )
 
 
 class QRScanLog(models.Model):
+
     class Result(models.TextChoices):
         SUCCESS = "SUCCESS", "Success"
         DENIED = "DENIED", "Denied"
@@ -191,7 +354,9 @@ class QRScanLog(models.Model):
         related_name="qr_scan_logs",
     )
 
-    scanned_at = models.DateTimeField(auto_now_add=True)
+    scanned_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     result = models.CharField(
         max_length=10,

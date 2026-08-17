@@ -44,3 +44,36 @@ class IsAdminOrTechnician(BasePermission):
                 User.Role.TECHNICIAN,
             ]
         )
+
+class IsMaintenanceReportAllowed(BasePermission):
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        return request.user.role in [
+            User.Role.ADMIN,
+            User.Role.TECHNICIAN,
+            User.Role.CLIENT,
+        ]
+
+    def has_object_permission(self, request, view, obj):
+
+        user = request.user
+
+        # Admin can access everything
+        if user.role == User.Role.ADMIN:
+            return True
+
+        maintenance = obj.maintenance
+        work_order = maintenance.work_order
+
+        # Technician can access reports for their maintenance
+        if user.role == User.Role.TECHNICIAN:
+            return maintenance.technician == user
+
+        # Client can only see reports for their own assets
+        if user.role == User.Role.CLIENT:
+            return work_order.client == user
+
+        return False
