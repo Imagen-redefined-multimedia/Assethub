@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from .models import (
     Asset,
+    Company,
     Maintenance,
     MaintenanceReport,
     MaintenanceSchedule,
@@ -313,4 +314,45 @@ class WorkOrderSerializer(
         read_only_fields = [
             "created_at",
             "updated_at",
+        ]
+        
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = [
+            "id",
+            "name",
+            "registration_number",
+            "email",
+            "phone",
+            "address",
+            "logo",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]
+
+class ProfileSerializer(serializers.ModelSerializer):
+    company = CompanySerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "company",
+        ]
+        read_only_fields = [
+            "id",
+            "username",
+            "role",
+            "company",
         ]

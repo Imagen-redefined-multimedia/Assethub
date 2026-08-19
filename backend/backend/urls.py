@@ -11,7 +11,10 @@ from rest_framework_simplejwt.views import (
 )
 
 from api.views import (
+    CompanyDetailView,
+    CompanyListCreateView,
     MeView,
+    ProfileView,
 
     # Users
     UserListCreateView,
@@ -227,4 +230,22 @@ urlpatterns = [
         MaintenanceReassignView.as_view(),
         name="maintenance-reassign",
     ),
+
+    path(
+    "api/profile/",
+    ProfileView.as_view(),
+    name="profile",
+),
+
+path(
+    "api/companies/",
+    CompanyListCreateView.as_view(),
+    name="company-list-create",
+),
+
+path(
+    "api/companies/<int:pk>/",
+    CompanyDetailView.as_view(),
+    name="company-detail",
+),
 ]

@@ -13,6 +13,7 @@ import qrcode
 
 from .models import (
     Asset,
+    Company,
     Maintenance,
     MaintenanceSchedule,
     QRScanLog,
@@ -28,9 +29,11 @@ from .permissions import (
 )
 
 from .serializers import (
+    CompanySerializer,
     MaintenanceReportSerializer,
     MaintenanceScheduleSerializer,
     MaintenanceSerializer,
+    ProfileSerializer,
     UserCreateSerializer,
     UserSerializer,
     AssetSerializer,
@@ -41,6 +44,41 @@ from .serializers import (
 User = get_user_model()
 
 
+class ProfileView(
+    generics.RetrieveUpdateAPIView
+):
+    serializer_class = ProfileSerializer
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get_object(self):
+        return self.request.user
+
+class CompanyListCreateView(
+    generics.ListCreateAPIView
+):
+    serializer_class = CompanySerializer
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    def get_queryset(self):
+        return Company.objects.all().order_by(
+            "name"
+        )
+
+class CompanyDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = CompanySerializer
+    permission_classes = [
+        IsAuthenticated,
+        IsAdmin,
+    ]
+
+    queryset = Company.objects.all()
 # ============================================================
 # CURRENT USER
 # ============================================================
