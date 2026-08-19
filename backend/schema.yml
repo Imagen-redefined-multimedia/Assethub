@@ -1,0 +1,2418 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/assets/:
+    get:
+      operationId: assets_list
+      tags:
+      - assets
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asset'
+          description: ''
+    post:
+      operationId: assets_create
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Asset'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/assets/{id}/:
+    get:
+      operationId: assets_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - assets
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+    put:
+      operationId: assets_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Asset'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+    patch:
+      operationId: assets_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+    delete:
+      operationId: assets_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - assets
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/assets/{id}/qr/:
+    get:
+      operationId: assets_qr_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - assets
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/companies/:
+    get:
+      operationId: companies_list
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+          description: ''
+    post:
+      operationId: companies_create
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Company'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Company'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+  /api/companies/{id}/:
+    get:
+      operationId: companies_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+    put:
+      operationId: companies_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Company'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Company'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+    patch:
+      operationId: companies_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCompany'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCompany'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCompany'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+    delete:
+      operationId: companies_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/maintenance/:
+    get:
+      operationId: maintenance_list
+      tags:
+      - maintenance
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Maintenance'
+          description: ''
+    post:
+      operationId: maintenance_create
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Maintenance'
+          description: ''
+  /api/maintenance-reports/:
+    get:
+      operationId: maintenance_reports_list
+      tags:
+      - maintenance-reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+    post:
+      operationId: maintenance_reports_create
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+  /api/maintenance-reports/{id}/:
+    get:
+      operationId: maintenance_reports_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+    put:
+      operationId: maintenance_reports_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+    patch:
+      operationId: maintenance_reports_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceReport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceReport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceReport'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+  /api/maintenance-reports/{id}/photos/:
+    post:
+      operationId: maintenance_reports_photos_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportPhotoUpload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportPhotoUpload'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportPhotoUpload'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReportPhotoUpload'
+          description: ''
+  /api/maintenance-reports/{id}/reassign/:
+    post:
+      operationId: maintenance_reports_reassign_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReassign'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReassign'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReassign'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReassign'
+          description: ''
+  /api/maintenance-reports/{id}/review/:
+    post:
+      operationId: maintenance_reports_review_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportReview'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportReview'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceReportReview'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReportReview'
+          description: ''
+  /api/maintenance-reports/rejected/:
+    get:
+      operationId: maintenance_reports_rejected_list
+      tags:
+      - maintenance-reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceReport'
+          description: ''
+  /api/maintenance-schedules/:
+    get:
+      operationId: maintenance_schedules_list
+      tags:
+      - maintenance-schedules
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaintenanceSchedule'
+          description: ''
+    post:
+      operationId: maintenance_schedules_create
+      tags:
+      - maintenance-schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+          description: ''
+  /api/maintenance-schedules/{id}/:
+    get:
+      operationId: maintenance_schedules_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-schedules
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+          description: ''
+    put:
+      operationId: maintenance_schedules_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceSchedule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+          description: ''
+    patch:
+      operationId: maintenance_schedules_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceSchedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceSchedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenanceSchedule'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceSchedule'
+          description: ''
+    delete:
+      operationId: maintenance_schedules_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance-schedules
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/maintenance/{id}/:
+    get:
+      operationId: maintenance_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Maintenance'
+          description: ''
+    put:
+      operationId: maintenance_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Maintenance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Maintenance'
+          description: ''
+    patch:
+      operationId: maintenance_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaintenance'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Maintenance'
+          description: ''
+  /api/profile/:
+    get:
+      operationId: profile_retrieve
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    put:
+      operationId: profile_update
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    patch:
+      operationId: profile_partial_update
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /api/qr/scan/{token}/:
+    post:
+      operationId: qr_scan_create
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - qr
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Asset'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - ht
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: users_create
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreate'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: users_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/work-orders/:
+    get:
+      operationId: work_orders_list
+      tags:
+      - work-orders
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkOrder'
+          description: ''
+    post:
+      operationId: work_orders_create
+      tags:
+      - work-orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
+  /api/work-orders/{id}/:
+    get:
+      operationId: work_orders_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - work-orders
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
+    put:
+      operationId: work_orders_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - work-orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrder'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
+    patch:
+      operationId: work_orders_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - work-orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkOrder'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
+    delete:
+      operationId: work_orders_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - work-orders
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    ActionEnum:
+      enum:
+      - ACCEPT
+      - REJECT
+      type: string
+      description: |-
+        * `ACCEPT` - ACCEPT
+        * `REJECT` - REJECT
+    Asset:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          type: integer
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+        client:
+          type: integer
+        client_username:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        serial_number:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        qr_active:
+          type: boolean
+          readOnly: true
+        qr_created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        qr_revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_qr_scan_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - client
+      - client_username
+      - company_name
+      - created_at
+      - id
+      - last_qr_scan_at
+      - name
+      - qr_active
+      - qr_created_at
+      - qr_revoked_at
+      - serial_number
+      - updated_at
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        registration_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          maxLength: 50
+        address:
+          type: string
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    FrequencyUnitEnum:
+      enum:
+      - DAYS
+      - WEEKS
+      - MONTHS
+      - YEARS
+      type: string
+      description: |-
+        * `DAYS` - Days
+        * `WEEKS` - Weeks
+        * `MONTHS` - Months
+        * `YEARS` - Years
+    Maintenance:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        work_order:
+          type: integer
+        work_order_title:
+          type: string
+          readOnly: true
+        work_order_description:
+          type: string
+          readOnly: true
+        work_order_status:
+          type: string
+          readOnly: true
+        company_id:
+          type: integer
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        company_registration_number:
+          type: string
+          readOnly: true
+        company_email:
+          type: string
+          format: email
+          readOnly: true
+        company_phone:
+          type: string
+          readOnly: true
+        company_address:
+          type: string
+          readOnly: true
+        client_id:
+          type: integer
+          readOnly: true
+        client_username:
+          type: string
+          readOnly: true
+        client_email:
+          type: string
+          format: email
+          readOnly: true
+        client_first_name:
+          type: string
+          readOnly: true
+        client_last_name:
+          type: string
+          readOnly: true
+        asset_id:
+          type: integer
+          readOnly: true
+        asset_name:
+          type: string
+          readOnly: true
+        asset_serial_number:
+          type: string
+          readOnly: true
+        asset_description:
+          type: string
+          readOnly: true
+        technician:
+          type: integer
+        technician_username:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/MaintenanceStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - asset_description
+      - asset_id
+      - asset_name
+      - asset_serial_number
+      - client_email
+      - client_first_name
+      - client_id
+      - client_last_name
+      - client_username
+      - company_address
+      - company_email
+      - company_id
+      - company_name
+      - company_phone
+      - company_registration_number
+      - created_at
+      - description
+      - id
+      - technician
+      - technician_username
+      - updated_at
+      - work_order
+      - work_order_description
+      - work_order_status
+      - work_order_title
+    MaintenanceReassign:
+      type: object
+      properties:
+        technician:
+          type: integer
+      required:
+      - technician
+    MaintenanceReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        maintenance:
+          type: integer
+        technician_username:
+          type: string
+          readOnly: true
+        asset_id:
+          type: integer
+          readOnly: true
+        asset_name:
+          type: string
+          readOnly: true
+        client_id:
+          type: integer
+          readOnly: true
+        summary:
+          type: string
+        findings:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceReportPhoto'
+          readOnly: true
+        work_performed:
+          type: string
+        parts_replaced:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/MaintenanceReportStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        review_status:
+          $ref: '#/components/schemas/ReviewStatusEnum'
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        review_comment:
+          type: string
+      required:
+      - asset_id
+      - asset_name
+      - client_id
+      - created_at
+      - findings
+      - id
+      - maintenance
+      - photos
+      - summary
+      - technician_username
+      - updated_at
+      - work_performed
+    MaintenanceReportPhoto:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        photo_type:
+          $ref: '#/components/schemas/MaintenanceReportPhotoPhotoTypeEnum'
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - image
+      - photo_type
+      - uploaded_at
+    MaintenanceReportPhotoPhotoTypeEnum:
+      enum:
+      - ISSUE
+      - FIXED
+      type: string
+      description: |-
+        * `ISSUE` - Issue
+        * `FIXED` - Fixed
+    MaintenanceReportPhotoUpload:
+      type: object
+      properties:
+        image:
+          type: string
+          format: uri
+        photo_type:
+          $ref: '#/components/schemas/MaintenanceReportPhotoUploadPhotoTypeEnum'
+      required:
+      - image
+      - photo_type
+    MaintenanceReportPhotoUploadPhotoTypeEnum:
+      enum:
+      - ISSUE
+      - FIXED
+      type: string
+      description: |-
+        * `ISSUE` - ISSUE
+        * `FIXED` - FIXED
+    MaintenanceReportReview:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        comment:
+          type: string
+      required:
+      - action
+    MaintenanceReportStatusEnum:
+      enum:
+      - OPEN
+      - IN_PROGRESS
+      - COMPLETED
+      type: string
+      description: |-
+        * `OPEN` - Open
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+    MaintenanceSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        asset:
+          type: integer
+        asset_name:
+          type: string
+          readOnly: true
+        frequency:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: How often maintenance should occur.
+        frequency_unit:
+          $ref: '#/components/schemas/FrequencyUnitEnum'
+        next_maintenance_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        last_maintenance_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        schedule_status:
+          type: string
+          readOnly: true
+        created_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - asset
+      - asset_name
+      - created_at
+      - created_by_username
+      - frequency
+      - frequency_unit
+      - id
+      - last_maintenance_date
+      - next_maintenance_date
+      - schedule_status
+      - updated_at
+    MaintenanceStatusEnum:
+      enum:
+      - ASSIGNED
+      - IN_PROGRESS
+      - COMPLETED
+      type: string
+      description: |-
+        * `ASSIGNED` - Assigned
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+    PatchedAsset:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          type: integer
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+        client:
+          type: integer
+        client_username:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        serial_number:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        qr_active:
+          type: boolean
+          readOnly: true
+        qr_created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        qr_revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_qr_scan_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        registration_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          maxLength: 50
+        address:
+          type: string
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMaintenance:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        work_order:
+          type: integer
+        work_order_title:
+          type: string
+          readOnly: true
+        work_order_description:
+          type: string
+          readOnly: true
+        work_order_status:
+          type: string
+          readOnly: true
+        company_id:
+          type: integer
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        company_registration_number:
+          type: string
+          readOnly: true
+        company_email:
+          type: string
+          format: email
+          readOnly: true
+        company_phone:
+          type: string
+          readOnly: true
+        company_address:
+          type: string
+          readOnly: true
+        client_id:
+          type: integer
+          readOnly: true
+        client_username:
+          type: string
+          readOnly: true
+        client_email:
+          type: string
+          format: email
+          readOnly: true
+        client_first_name:
+          type: string
+          readOnly: true
+        client_last_name:
+          type: string
+          readOnly: true
+        asset_id:
+          type: integer
+          readOnly: true
+        asset_name:
+          type: string
+          readOnly: true
+        asset_serial_number:
+          type: string
+          readOnly: true
+        asset_description:
+          type: string
+          readOnly: true
+        technician:
+          type: integer
+        technician_username:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/MaintenanceStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMaintenanceReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        maintenance:
+          type: integer
+        technician_username:
+          type: string
+          readOnly: true
+        asset_id:
+          type: integer
+          readOnly: true
+        asset_name:
+          type: string
+          readOnly: true
+        client_id:
+          type: integer
+          readOnly: true
+        summary:
+          type: string
+        findings:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceReportPhoto'
+          readOnly: true
+        work_performed:
+          type: string
+        parts_replaced:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/MaintenanceReportStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        review_status:
+          $ref: '#/components/schemas/ReviewStatusEnum'
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        review_comment:
+          type: string
+    PatchedMaintenanceSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        asset:
+          type: integer
+        asset_name:
+          type: string
+          readOnly: true
+        frequency:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: How often maintenance should occur.
+        frequency_unit:
+          $ref: '#/components/schemas/FrequencyUnitEnum'
+        next_maintenance_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        last_maintenance_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        schedule_status:
+          type: string
+          readOnly: true
+        created_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+    PatchedWorkOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          type: integer
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+        client:
+          type: integer
+        client_username:
+          type: string
+          readOnly: true
+        asset:
+          type: integer
+        asset_name:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/WorkOrderStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PriorityEnum:
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      - CRITICAL
+      type: string
+      description: |-
+        * `LOW` - Low
+        * `MEDIUM` - Medium
+        * `HIGH` - High
+        * `CRITICAL` - Critical
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+      required:
+      - company
+      - id
+      - role
+      - username
+    ReviewStatusEnum:
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      type: string
+      description: |-
+        * `PENDING` - Pending Review
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
+    RoleEnum:
+      enum:
+      - ADMIN
+      - TECHNICIAN
+      - CLIENT
+      type: string
+      description: |-
+        * `ADMIN` - Admin
+        * `TECHNICIAN` - Technician
+        * `CLIENT` - Client
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - id
+      - username
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+      required:
+      - password
+      - username
+    WorkOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          type: integer
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+        client:
+          type: integer
+        client_username:
+          type: string
+          readOnly: true
+        asset:
+          type: integer
+        asset_name:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/WorkOrderStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - asset
+      - asset_name
+      - client
+      - client_username
+      - company_name
+      - created_at
+      - description
+      - id
+      - title
+      - updated_at
+    WorkOrderStatusEnum:
+      enum:
+      - PENDING
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
@@ -132,7 +133,7 @@ class MaintenanceReportPhotoSerializer(
             "uploaded_at",
         ]
 
-        
+
 class MaintenanceReportSerializer(serializers.ModelSerializer):
     technician_username = serializers.CharField(
         source="maintenance.technician.username",
@@ -206,7 +207,11 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    schedule_status = serializers.ReadOnlyField()
+    schedule_status = serializers.SerializerMethodField()
+    
+    @extend_schema_field(serializers.CharField())
+    def get_schedule_status(self, obj):
+        return obj.schedule_status
 
     class Meta:
         model = MaintenanceSchedule
@@ -511,3 +516,25 @@ class ProfileSerializer(serializers.ModelSerializer):
             "role",
             "company",
         ]
+
+class MaintenanceReportReviewSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(
+        choices=["ACCEPT", "REJECT"]
+    )
+
+    comment = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+class MaintenanceReassignSerializer(serializers.Serializer):
+    technician = serializers.IntegerField()
+    
+class MaintenanceReportPhotoUploadSerializer(
+    serializers.Serializer
+):
+    image = serializers.ImageField()
+
+    photo_type = serializers.ChoiceField(
+        choices=["ISSUE", "FIXED"]
+    )

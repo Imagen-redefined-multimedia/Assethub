@@ -1,3 +1,5 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import ( extend_schema, OpenApiRequest)
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
@@ -24,7 +26,6 @@ from .models import (
 
 from .permissions import (
     IsAdmin,
-    IsAdminOrOwnClient,
     IsAdminOrOwnCompany,
     IsAdminOrTechnician,
     IsMaintenanceReportAllowed,
@@ -32,6 +33,9 @@ from .permissions import (
 
 from .serializers import (
     CompanySerializer,
+    MaintenanceReassignSerializer,
+    MaintenanceReportPhotoUploadSerializer,
+    MaintenanceReportReviewSerializer,
     MaintenanceReportSerializer,
     MaintenanceScheduleSerializer,
     MaintenanceSerializer,
@@ -84,7 +88,9 @@ class CompanyDetailView(
 # ============================================================
 # CURRENT USER
 # ============================================================
-
+@extend_schema(
+    responses=UserSerializer,
+)
 class MeView(APIView):
     permission_classes = [
         IsAuthenticated,
@@ -217,7 +223,11 @@ class AssetDetailView(
 # ASSET QR CODE
 # ADMIN ONLY
 # ============================================================
-
+@extend_schema(
+    responses={
+        200: OpenApiTypes.BINARY,
+    }
+)
 class AssetQRCodeView(APIView):
     permission_classes = [
         IsAuthenticated,
@@ -281,11 +291,19 @@ class AssetQRCodeView(APIView):
 
 class QRScanView(APIView):
 
+    serializer_class = AssetSerializer
+
     permission_classes = [
         IsAuthenticated,
         IsAdminOrTechnician,
     ]
 
+    @extend_schema(
+    responses={
+        200: AssetSerializer,
+    }
+)
+    
     def post(self, request, token):
 
         try:
@@ -811,9 +829,16 @@ class WorkOrderDetailView(
 # ============================================================
 
 class MaintenanceReportReviewView(APIView):
+
+    serializer_class = MaintenanceReportReviewSerializer
+
     permission_classes = [
         IsAuthenticated,
     ]
+
+    @extend_schema(
+    request=MaintenanceReportReviewSerializer,
+)
 
     def post(self, request, pk):
 
@@ -1049,11 +1074,18 @@ class MaintenanceDetailView(
 
 class MaintenanceReassignView(APIView):
 
+
+    serializer_class = MaintenanceReassignSerializer
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
     ]
 
+    @extend_schema(
+    request=MaintenanceReassignSerializer,
+)
+    
     def post(self, request, pk):
 
         try:
@@ -1160,10 +1192,17 @@ class MaintenanceReportPhotoUploadView(
     APIView
 ):
 
+    serializer_class = MaintenanceReportPhotoUploadSerializer
+
     permission_classes = [
         IsAuthenticated,
     ]
 
+    @extend_schema(
+    request=MaintenanceReportPhotoUploadSerializer,
+    
+)
+    
     def post(self, request, pk):
 
         user = request.user
