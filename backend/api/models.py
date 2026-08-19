@@ -337,36 +337,16 @@ class MaintenanceReport(models.Model):
         default=Status.OPEN,
     )
 
+    # --------------------------------------------------------
+    # ADMIN / REASSIGNMENT
+    # --------------------------------------------------------
+
     requires_admin_action = models.BooleanField(
-    default=False
+        default=False,
     )
 
     reassignment_count = models.PositiveIntegerField(
-        default=0
-    )
-
-    review_status = models.CharField(
-    max_length=20,
-    choices=ReviewStatus.choices,
-    default=ReviewStatus.PENDING,
-)
-
-    review_comment = models.TextField(
-        blank=True,
-        default="",
-    )
-
-    reviewed_at = models.DateTimeField(
-        null=True,
-        blank=True,
-    )
-
-    requires_admin_action = models.BooleanField(
-        default=False
-    )
-
-    reassignment_count = models.PositiveIntegerField(
-        default=0
+        default=0,
     )
 
     # --------------------------------------------------------
@@ -379,14 +359,19 @@ class MaintenanceReport(models.Model):
         default=ReviewStatus.PENDING,
     )
 
+    review_comment = models.TextField(
+        blank=True,
+        default="",
+    )
+
     reviewed_at = models.DateTimeField(
         null=True,
         blank=True,
     )
 
-    review_comment = models.TextField(
-        blank=True,
-    )
+    # --------------------------------------------------------
+    # TIMESTAMPS
+    # --------------------------------------------------------
 
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -398,6 +383,8 @@ class MaintenanceReport(models.Model):
 
     def __str__(self):
         return f"Report #{self.id}"
+
+    
 class MaintenanceReportPhoto(models.Model):
 
     class PhotoType(models.TextChoices):

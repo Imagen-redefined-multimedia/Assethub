@@ -7,6 +7,7 @@ from .models import (
     Company,
     Maintenance,
     MaintenanceReport,
+    MaintenanceReportPhoto,
     MaintenanceSchedule,
     WorkOrder,
 )
@@ -113,7 +114,25 @@ class AssetSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+class MaintenanceReportPhotoSerializer(
+    serializers.ModelSerializer
+):
+    class Meta:
+        model = MaintenanceReportPhoto
 
+        fields = [
+            "id",
+            "image",
+            "photo_type",
+            "uploaded_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "uploaded_at",
+        ]
+
+        
 class MaintenanceReportSerializer(serializers.ModelSerializer):
     technician_username = serializers.CharField(
         source="maintenance.technician.username",
@@ -124,6 +143,10 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
         source="maintenance.work_order.asset.id",
         read_only=True,
     )
+    photos = MaintenanceReportPhotoSerializer(
+    many=True,
+    read_only=True,
+)
 
     asset_name = serializers.CharField(
         source="maintenance.work_order.asset.name",
@@ -147,6 +170,7 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             "client_id",
             "summary",
             "findings",
+            "photos",
             "work_performed",
             "parts_replaced",
             "priority",
@@ -166,8 +190,10 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             "client_id",
             "created_at",
             "updated_at",
-            
+            "photos",
         ]
+
+
 
 class MaintenanceScheduleSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(

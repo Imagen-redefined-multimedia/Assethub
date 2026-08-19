@@ -1,285 +1,432 @@
-# AssetHub API
+# AssetHub API Documentation
 
-AssetHub is a role-based asset and maintenance management API built with **Django** and **Django REST Framework (DRF)**.
+## 1. Overview
 
-The system is designed to manage company assets, work orders, maintenance schedules, technician assignments, QR-code asset identification, maintenance reports, and client reviews.
+AssetHub is a maintenance and asset management API built with:
 
-The API uses **JWT authentication** and a role-based access-control model consisting of:
+* Django
+* Django REST Framework
+* JWT Authentication
+* SQLite/PostgreSQL
+* QR Code integration
+* Role-Based Access Control (RBAC)
 
-* **Administrator**
-* **Technician**
-* **Client**
+The API manages:
+
+* Users and roles
+* Companies
+* Client profiles
+* Assets
+* Asset QR codes
+* Maintenance schedules
+* Work orders
+* Maintenance assignments
+* Maintenance reports
+* Client report reviews
+* Report rejection and reassignment
 
 ---
 
-## 1. System Overview
+# 2. Base URL
 
-AssetHub provides a centralized backend for managing the complete asset-maintenance lifecycle.
-
-### Core workflow
+For local development:
 
 ```text
-Admin
-  │
-  ├── Creates Client
-  ├── Creates Technician
-  ├── Creates Asset
-  ├── Generates Asset QR Code
-  ├── Creates Work Order
-  │
-  └── Assigns Maintenance
-          │
-          ▼
-      Technician
-          │
-          ├── Views assigned maintenance
-          ├── Performs maintenance
-          └── Creates Maintenance Report
-                    │
-                    ▼
-                  Client
-                    │
-             ┌──────┴──────┐
-             │             │
-           ACCEPT        REJECT
-             │             │
-             ▼             ▼
-          Complete       Admin
-                           │
-                           └── Reassigns maintenance
-                                  │
-                                  ▼
-                              Technician
+http://127.0.0.1:8000
+```
+
+API endpoints use the `/api/` prefix.
+
+Example:
+
+```text
+http://127.0.0.1:8000/api/auth/token/
 ```
 
 ---
 
-# 2. Technology Stack
+# 3. Authentication
 
-| Technology            | Purpose                      |
-| --------------------- | ---------------------------- |
-| Python                | Backend programming language |
-| Django                | Web framework                |
-| Django REST Framework | REST API                     |
-| Simple JWT            | Authentication               |
-| SQLite/PostgreSQL     | Database                     |
-| QRCode                | QR-code generation           |
-| Postman               | API testing                  |
+AssetHub uses JWT authentication.
 
----
+## Obtain Access Token
 
-# 3. User Roles
+**POST**
 
-AssetHub uses three primary roles.
-
-## Administrator
-
-The administrator has the highest level of access.
-
-Administrators can:
-
-* Create users
-* Delete users
-* Manage clients
-* Manage technicians
-* Create assets
-* Update assets
-* Delete assets
-* Generate asset QR codes
-* Create work orders
-* Assign maintenance
-* Create maintenance schedules
-* View all maintenance
-* View all maintenance reports
-* View rejected reports
-* Reassign rejected maintenance
-
----
-
-## Technician
-
-Technicians are responsible for performing assigned maintenance.
-
-Technicians can:
-
-* View their assigned maintenance
-* Scan asset QR codes
-* Create maintenance reports
-* Update maintenance information
-* Complete maintenance
-* View reports associated with their maintenance
-
-Technicians cannot:
-
-* Create users
-* Manage clients
-* Create work orders
-* Manage maintenance schedules
-* Reassign maintenance
-
----
-
-## Client
-
-Clients can view information related to their own assets and maintenance.
-
-Clients can:
-
-* View their assets
-* View their work orders
-* View maintenance reports for their assets
-* Accept maintenance reports
-* Reject maintenance reports
-* Provide rejection comments
-
-Clients cannot:
-
-* Create maintenance reports
-* Assign technicians
-* Manage assets
-* Manage users
-* Reassign maintenance
-
----
-
-# 4. Authentication
-
-AssetHub uses **JWT Bearer authentication**.
-
-## Obtain access token
-
-```http
-POST /api/auth/token/
+```text
+/api/auth/token/
 ```
 
-Request:
+### Request
 
 ```json
 {
-    "username": "imagen",
-    "password": "your-password"
+    "username": "admin",
+    "password": "password"
 }
 ```
 
-Response:
+### Response
 
 ```json
 {
-    "refresh": "refresh-token",
-    "access": "access-token"
+    "refresh": "JWT_REFRESH_TOKEN",
+    "access": "JWT_ACCESS_TOKEN"
 }
 ```
 
 Use the access token in subsequent requests:
 
 ```http
-Authorization: Bearer <access-token>
+Authorization: Bearer JWT_ACCESS_TOKEN
 ```
 
 ---
 
-## Refresh access token
+## Refresh Token
 
-```http
-POST /api/auth/token/refresh/
+**POST**
+
+```text
+/api/auth/token/refresh/
 ```
 
-Request:
+### Request
 
 ```json
 {
-    "refresh": "your-refresh-token"
+    "refresh": "JWT_REFRESH_TOKEN"
+}
+```
+
+### Response
+
+```json
+{
+    "access": "NEW_ACCESS_TOKEN"
 }
 ```
 
 ---
 
-## Current user
+# 4. User Roles
 
-```http
-GET /api/auth/me/
-```
+AssetHub currently supports three roles.
 
-Returns information about the authenticated user.
+| Role       | Responsibility                                          |
+| ---------- | ------------------------------------------------------- |
+| ADMIN      | Full system administration                              |
+| TECHNICIAN | Performs assigned maintenance                           |
+| CLIENT     | Owns assets/work orders and reviews maintenance reports |
+
+### ADMIN
+
+Can:
+
+* Manage users
+* Create companies
+* Manage companies
+* Create assets
+* Manage maintenance schedules
+* Create maintenance assignments
+* View all maintenance
+* Reassign rejected maintenance
+* View rejected reports
+* Manage system operations
+
+### TECHNICIAN
+
+Can:
+
+* View assigned maintenance
+* Scan asset QR codes
+* Create maintenance reports
+* Update assigned maintenance
+* View information related to assigned work
+
+Technicians do not manage work orders.
+
+### CLIENT
+
+Can:
+
+* View their company information
+* View their assets
+* Create work orders
+* View their work orders
+* View maintenance reports related to their assets
+* Accept maintenance reports
+* Reject maintenance reports
+
+Clients cannot create maintenance reports.
 
 ---
 
-# 5. API Endpoints
+# 5. Current User
 
-## Authentication
+## Get Current User
 
-| Method | Endpoint                   | Purpose      |
-| ------ | -------------------------- | ------------ |
-| POST   | `/api/auth/token/`         | Login        |
-| POST   | `/api/auth/token/refresh/` | Refresh JWT  |
-| GET    | `/api/auth/me/`            | Current user |
+**GET**
 
----
-
-# 6. User Management
-
-## List/Create Users
-
-```http
-GET /api/users/
-POST /api/users/
+```text
+/api/auth/me/
 ```
 
-Administrator access is required.
+### Authentication
 
-### Create user
+Required.
+
+### Allowed Roles
+
+* ADMIN
+* TECHNICIAN
+
+### Example Response
 
 ```json
 {
+    "id": 3,
     "username": "tech",
-    "password": "password123",
+    "email": "tech@example.com",
     "role": "TECHNICIAN"
 }
 ```
 
 ---
 
-## User Detail
+# 6. Profile API
 
-```http
-GET /api/users/<id>/
-PATCH /api/users/<id>/
-DELETE /api/users/<id>/
+## Get Profile
+
+**GET**
+
+```text
+/api/profile/
 ```
 
-Administrator only.
+Returns the authenticated user's profile.
+
+### Authentication
+
+Required.
+
+## Update Profile
+
+**PUT/PATCH**
+
+```text
+/api/profile/
+```
+
+The authenticated user can update their own profile.
 
 ---
 
-# 7. Asset Management
+# 7. Users
+
+## List Users
+
+**GET**
+
+```text
+/api/users/
+```
+
+### Allowed Role
+
+ADMIN
+
+Returns all users.
+
+---
+
+## Create User
+
+**POST**
+
+```text
+/api/users/
+```
+
+### Allowed Role
+
+ADMIN
+
+Example:
+
+```json
+{
+    "username": "client1",
+    "email": "client@example.com",
+    "password": "password123",
+    "first_name": "John",
+    "last_name": "Client",
+    "role": "CLIENT",
+    "company": 1
+}
+```
+
+---
+
+## Get User
+
+**GET**
+
+```text
+/api/users/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Update User
+
+**PUT/PATCH**
+
+```text
+/api/users/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Delete User
+
+**DELETE**
+
+```text
+/api/users/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+# 8. Companies
+
+Companies represent the client organizations using AssetHub.
+
+## List Companies
+
+**GET**
+
+```text
+/api/companies/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Create Company
+
+**POST**
+
+```text
+/api/companies/
+```
+
+### Allowed Role
+
+ADMIN
+
+Example:
+
+```json
+{
+    "name": "ABC Engineering",
+    "registration_number": "REG-2026-001",
+    "email": "info@abcengineering.com",
+    "phone": "+26650000000",
+    "address": "Maseru, Lesotho"
+}
+```
+
+---
+
+## Get Company
+
+**GET**
+
+```text
+/api/companies/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Update Company
+
+**PUT/PATCH**
+
+```text
+/api/companies/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Delete Company
+
+**DELETE**
+
+```text
+/api/companies/{id}/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+# 9. Assets
+
+Assets belong to clients and are automatically associated with the client's company.
 
 ## List Assets
 
-```http
-GET /api/assets/
+**GET**
+
+```text
+/api/assets/
 ```
 
-### Administrator
+### Access
 
-Returns all assets.
-
-### Client
-
-Returns only assets belonging to that client.
-
-### Technician
-
-Direct asset-list access is restricted.
+* ADMIN → All assets
+* CLIENT → Assets belonging to their company
+* TECHNICIAN → Assets belonging to their company, where applicable
 
 ---
 
 ## Create Asset
 
-```http
-POST /api/assets/
+**POST**
+
+```text
+/api/assets/
 ```
 
-Administrator only.
+### Allowed Role
+
+ADMIN
 
 Example:
 
@@ -292,236 +439,405 @@ Example:
 }
 ```
 
----
+The API automatically attaches the client's company.
 
-## Asset Detail
-
-```http
-GET /api/assets/<id>/
-PATCH /api/assets/<id>/
-DELETE /api/assets/<id>/
-```
-
-Administrators can access all assets.
-
-Clients can access their own assets.
-
----
-
-# 8. QR Code System
-
-Every asset can have an associated QR code.
-
-The QR code contains a secure asset token that points to the AssetHub QR scanning endpoint.
-
-## Generate QR Code
-
-```http
-GET /api/assets/<asset_id>/qr/
-```
-
-Administrator only.
-
-The endpoint returns:
-
-```text
-image/png
-```
-
----
-
-## Scan QR Code
-
-```http
-POST /api/qr/scan/<token>/
-```
-
-Available to:
-
-* Administrator
-* Technician
-
-The system records:
-
-* Asset
-* User
-* Scan result
-* IP address
-* User agent
-* Scan timestamp
-
-Successful scans update the asset's `last_qr_scan_at` value.
-
----
-
-# 9. Work Orders
-
-Work orders connect clients, assets, and maintenance activities.
-
-## List/Create Work Orders
-
-```http
-GET /api/work-orders/
-POST /api/work-orders/
-```
-
-Administrators can view all work orders.
-
-Clients can view their own work orders.
-
-Technicians do not manage work orders.
-
----
-
-## Work Order Detail
-
-```http
-GET /api/work-orders/<id>/
-PATCH /api/work-orders/<id>/
-DELETE /api/work-orders/<id>/
-```
-
-Administrators can access all work orders.
-
-Clients can access their own work orders.
-
----
-
-# 10. Maintenance Schedules
-
-Maintenance schedules define when an asset should receive maintenance.
-
-## List/Create Schedule
-
-```http
-GET /api/maintenance-schedules/
-POST /api/maintenance-schedules/
-```
-
-Administrator only.
-
-Example:
+Example result:
 
 ```json
 {
-    "asset": 1,
-    "frequency": "MONTHLY"
+    "id": 2,
+    "company": 1,
+    "company_name": "ABC Engineering",
+    "client": 2,
+    "client_username": "client1",
+    "name": "Industrial Generator",
+    "serial_number": "GEN-2026-001",
+    "description": "Backup generator",
+    "qr_active": true
 }
 ```
 
-The system automatically calculates the next maintenance date.
-
-An asset cannot have duplicate active maintenance schedules.
-
 ---
 
-## Schedule Detail
+## Get Asset
 
-```http
-GET /api/maintenance-schedules/<id>/
-PATCH /api/maintenance-schedules/<id>/
-DELETE /api/maintenance-schedules/<id>/
+**GET**
+
+```text
+/api/assets/{id}/
 ```
 
-Administrator only.
+---
+
+## Update Asset
+
+**PUT/PATCH**
+
+```text
+/api/assets/{id}/
+```
 
 ---
 
-# 11. Maintenance
+## Delete Asset
 
-Maintenance represents an actual maintenance task assigned to a technician.
+**DELETE**
+
+```text
+/api/assets/{id}/
+```
+
+---
+
+# 10. Asset QR Codes
+
+Each asset has an associated QR token.
+
+## Generate Asset QR Code
+
+**GET**
+
+```text
+/api/assets/{id}/qr/
+```
+
+### Allowed Role
+
+ADMIN
+
+The endpoint returns a PNG image containing the QR code.
+
+---
+
+# 11. Scan Asset QR Code
+
+**POST**
+
+```text
+/api/qr/scan/{token}/
+```
+
+### Allowed Roles
+
+* ADMIN
+* TECHNICIAN
+
+The API:
+
+1. Validates the QR token.
+2. Checks whether the QR code is active.
+3. Records the scan.
+4. Records the user.
+5. Records the IP address.
+6. Records the user agent.
+7. Updates the asset's last scan time.
+
+### Successful Response
+
+```json
+{
+    "message": "QR code scanned successfully.",
+    "asset": {
+        "id": 2,
+        "name": "Industrial Generator",
+        "serial_number": "GEN-2026-001",
+        "description": "Backup generator",
+        "client": 2,
+        "client_username": "client1"
+    }
+}
+```
+
+---
+
+# 12. Maintenance Schedules
+
+Maintenance schedules determine when an asset requires maintenance.
+
+## List Schedules
+
+**GET**
+
+```text
+/api/maintenance-schedules/
+```
+
+### Allowed Role
+
+ADMIN
+
+---
+
+## Create Schedule
+
+**POST**
+
+```text
+/api/maintenance-schedules/
+```
+
+### Allowed Role
+
+ADMIN
+
+The API automatically calculates the first maintenance date.
+
+Duplicate schedules for the same asset are prevented.
+
+---
+
+## Get Schedule
+
+**GET**
+
+```text
+/api/maintenance-schedules/{id}/
+```
+
+---
+
+## Update Schedule
+
+**PUT/PATCH**
+
+```text
+/api/maintenance-schedules/{id}/
+```
+
+---
+
+## Delete Schedule
+
+**DELETE**
+
+```text
+/api/maintenance-schedules/{id}/
+```
+
+---
+
+# 13. Work Orders
+
+Work orders represent maintenance requests from clients.
+
+## List Work Orders
+
+**GET**
+
+```text
+/api/work-orders/
+```
+
+### ADMIN
+
+Can see all work orders.
+
+### CLIENT
+
+Can see their own work orders.
+
+### TECHNICIAN
+
+Does not manage work orders.
+
+---
+
+## Create Work Order
+
+**POST**
+
+```text
+/api/work-orders/
+```
+
+### Client Request
+
+```json
+{
+    "asset": 2,
+    "title": "Industrial Generator Maintenance",
+    "description": "Inspect and perform scheduled maintenance."
+}
+```
+
+The API automatically assigns:
+
+```text
+client = authenticated client
+company = authenticated client's company
+```
+
+### Admin Request
+
+An administrator can create a work order for a client.
+
+```json
+{
+    "client": 2,
+    "asset": 2,
+    "title": "Industrial Generator Maintenance",
+    "description": "Inspect and perform scheduled maintenance."
+}
+```
+
+The API automatically determines the company from the client.
+
+---
+
+## Get Work Order
+
+**GET**
+
+```text
+/api/work-orders/{id}/
+```
+
+---
+
+## Update Work Order
+
+**PUT/PATCH**
+
+```text
+/api/work-orders/{id}/
+```
+
+---
+
+## Delete Work Order
+
+**DELETE**
+
+```text
+/api/work-orders/{id}/
+```
+
+---
+
+# 14. Maintenance
+
+Maintenance represents an actual task assigned to a technician.
 
 ## List Maintenance
 
-```http
-GET /api/maintenance/
+**GET**
+
+```text
+/api/maintenance/
 ```
 
-### Administrator
+### ADMIN
 
-Returns all maintenance tasks.
+Can view all maintenance tasks.
 
-### Technician
+### TECHNICIAN
 
-Returns only maintenance assigned to the authenticated technician.
+Can view only maintenance assigned to themselves.
+
+### CLIENT
+
+Does not manage maintenance assignments.
 
 ---
 
 ## Create Maintenance
 
-```http
-POST /api/maintenance/
+**POST**
+
+```text
+/api/maintenance/
 ```
 
-Administrator only.
+### Allowed Role
+
+ADMIN
 
 Example:
 
 ```json
 {
-    "work_order": 1,
+    "work_order": 3,
     "technician": 3,
-    "description": "Inspect generator and perform scheduled maintenance",
-    "status": "ASSIGNED"
+    "description": "Inspect generator and perform scheduled maintenance."
 }
 ```
 
-The selected user must have the `TECHNICIAN` role.
+The API validates that the selected user is actually a technician.
 
 ---
 
-## Maintenance Detail
+## Get Maintenance
 
-```http
-GET /api/maintenance/<id>/
-PATCH /api/maintenance/<id>/
+**GET**
+
+```text
+/api/maintenance/{id}/
 ```
 
-Administrators can access all maintenance.
+### Access
 
-Technicians can access their assigned maintenance.
+* ADMIN
+* Assigned TECHNICIAN
 
 ---
 
-# 12. Maintenance Reports
+## Update Maintenance
 
-A maintenance report records what the technician found and what work was performed.
+**PUT/PATCH**
 
-A report is associated with a maintenance task.
+```text
+/api/maintenance/{id}/
+```
+
+A maintenance task cannot be directly marked as `COMPLETED` unless a completed maintenance report exists.
+
+This ensures the maintenance workflow cannot bypass reporting.
+
+---
+
+# 15. Maintenance Reports
+
+Maintenance reports are created by technicians after performing maintenance.
 
 ## List Reports
 
-```http
-GET /api/maintenance-reports/
+**GET**
+
+```text
+/api/maintenance-reports/
 ```
 
-### Administrator
+### ADMIN
 
-Sees all reports.
+Can see all reports.
 
-### Technician
+### TECHNICIAN
 
-Sees reports for their assigned maintenance.
+Can see reports for their assigned maintenance.
 
-### Client
+### CLIENT
 
-Sees reports associated with their own work orders/assets.
+Can see reports belonging to their work orders.
 
 ---
 
-## Create Report
+## Create Maintenance Report
 
-```http
-POST /api/maintenance-reports/
+**POST**
+
+```text
+/api/maintenance-reports/
 ```
 
-Technicians can create reports for their assigned maintenance.
+### Allowed Role
+
+TECHNICIAN
 
 Example:
 
 ```json
 {
-    "maintenance": 1,
+    "maintenance": 3,
     "summary": "Scheduled generator inspection",
     "findings": "Minor wear found on the cooling system.",
     "work_performed": "Inspected and serviced the cooling system.",
@@ -531,82 +847,62 @@ Example:
 }
 ```
 
-A technician cannot create a report for another technician's maintenance task.
+The API prevents:
 
-A maintenance task cannot have duplicate reports.
+* Clients from creating reports.
+* Technicians from reporting on another technician's maintenance.
+* Duplicate reports for the same maintenance task.
 
 ---
 
-# 13. Maintenance Report Status
+# 16. Maintenance Report Workflow
 
-Reports support a lifecycle that controls client review.
-
-Typical flow:
+The report workflow is:
 
 ```text
-IN_PROGRESS
-     │
-     ▼
-COMPLETED
-     │
-     ▼
-Client Review
-   /      \
-  /        \
-ACCEPT     REJECT
-  │          │
-  ▼          ▼
-Approved    Admin Action
+Work Order
+     ↓
+Maintenance Assignment
+     ↓
+Technician Performs Maintenance
+     ↓
+Technician Creates Report
+     ↓
+Report COMPLETED
+     ↓
+Client Reviews Report
+     ↓
+ ┌───────────────┐
+ │               │
+ ACCEPT        REJECT
+ │               │
+ ↓               ↓
+Completed      Admin Action
+                 ↓
+              Reassign
+                 ↓
+             Technician
 ```
 
-A client cannot review a report until the report has been marked:
+---
+
+# 17. Client Report Review
+
+## Review Maintenance Report
+
+**POST**
 
 ```text
-COMPLETED
+/api/maintenance-reports/{id}/review/
 ```
 
----
+### Allowed Role
 
-# 14. Maintenance Report Detail
-
-```http
-GET /api/maintenance-reports/<id>/
-PATCH /api/maintenance-reports/<id>/
-```
-
-Access is filtered according to the user's role.
-
-### Administrator
-
-Can access all reports.
-
-### Technician
-
-Can access reports belonging to their maintenance.
-
-### Client
-
-Can access reports associated with their own work orders.
-
----
-
-# 15. Client Report Review
-
-Clients can accept or reject completed maintenance reports.
-
-## Review Endpoint
-
-```http
-POST /api/maintenance-reports/<id>/review/
-```
-
-Only the client associated with the work order can review the report.
+CLIENT
 
 ---
 
 ## Accept Report
-
-Request:
 
 ```json
 {
@@ -615,112 +911,81 @@ Request:
 }
 ```
 
-The report becomes:
+### Response
 
-```text
-ACCEPTED
+```json
+{
+    "message": "Maintenance report accepted.",
+    "report_id": 3,
+    "review_status": "ACCEPTED",
+    "review_comment": "Maintenance completed successfully.",
+    "requires_admin_action": false
+}
 ```
+
+An accepted report cannot be reviewed again.
 
 ---
 
-## Reject Report
+# 18. Reject Maintenance Report
 
-Request:
+A client can reject a completed report if the maintenance work is not satisfactory.
+
+### Request
 
 ```json
 {
     "action": "REJECT",
-    "comment": "The cooling system still requires additional repairs."
+    "comment": "The cooling system issue was not fully resolved."
 }
 ```
+
+A rejection comment is mandatory.
+
+### Result
 
 The report becomes:
 
 ```text
-REJECTED
-```
-
-A rejection requires a comment.
-
-The system sets:
-
-```text
+review_status = REJECTED
 requires_admin_action = true
 ```
 
-The maintenance task is returned to an assignable state so the administrator can decide what to do next.
+The maintenance is returned to an active workflow for administrative action.
 
 ---
 
-# 16. Rejected Maintenance Workflow
+# 19. Rejected Maintenance Reports
 
-A rejected report is escalated to the administrator.
+## List Rejected Reports
 
-The workflow is:
+**GET**
 
 ```text
-Technician
-    │
-    ▼
-Maintenance
-    │
-    ▼
-Report COMPLETED
-    │
-    ▼
-Client Reviews
-    │
-    └── REJECTED
-            │
-            ▼
-      Admin Action Required
-            │
-       ┌────┴────┐
-       │         │
- Same Tech   New Tech
-       │         │
-       └────┬────┘
-            ▼
-       Maintenance
-       ASSIGNED
-            │
-            ▼
-       Technician
-            │
-            ▼
-       New Report
+/api/maintenance-reports/rejected/
 ```
 
-This prevents a rejected maintenance report from being treated as a completed job.
+### Allowed Role
+
+ADMIN
+
+Only reports that require administrative action are returned.
 
 ---
 
-# 17. Rejected Reports
+# 20. Reassign Rejected Maintenance
 
-Administrators can retrieve reports requiring administrative action.
+## Reassign
 
-```http
-GET /api/maintenance-reports/rejected/
+**POST**
+
+```text
+/maintenance-reports/{id}/reassign/
 ```
 
-Expected records have:
+### Allowed Role
 
-```json
-{
-    "review_status": "REJECTED",
-    "requires_admin_action": true
-}
-```
-
----
-
-# 18. Reassign Maintenance
-
-Administrators can reassign rejected maintenance to the same technician or another technician.
-
-```http
-POST /api/maintenance-reports/<id>/reassign/
-```
+ADMIN
 
 Example:
 
@@ -730,460 +995,361 @@ Example:
 }
 ```
 
-Or assign another technician:
+The API:
+
+1. Validates that the report was rejected.
+2. Validates that the selected user is a technician.
+3. Assigns the maintenance to the new technician.
+4. Sets maintenance status to `ASSIGNED`.
+5. Resets the report review status to `PENDING`.
+6. Clears the previous review comment.
+7. Clears the review timestamp.
+8. Removes the admin-action flag.
+9. Increments the reassignment counter.
+
+Example response:
 
 ```json
 {
-    "technician": 4
+    "message": "Maintenance reassigned successfully.",
+    "report_id": 2,
+    "maintenance_id": 2,
+    "technician": 3,
+    "technician_username": "tech",
+    "status": "ASSIGNED",
+    "reassignment_count": 1
 }
 ```
 
-The selected user must have the `TECHNICIAN` role.
+---
 
-After reassignment, the maintenance should return to:
+# 21. Report Status
 
-```text
-ASSIGNED
-```
+Maintenance reports support:
 
-The technician can then perform the work again.
+| Status      | Meaning                                      |
+| ----------- | -------------------------------------------- |
+| OPEN        | Report has been created but is not completed |
+| IN_PROGRESS | Report is being worked on                    |
+| COMPLETED   | Technician has completed the report          |
 
 ---
 
-# 19. Permission Matrix
+# 22. Report Priority
 
-| Feature               | Admin | Technician | Client |
-| --------------------- | :---: | :--------: | :----: |
-| Login                 |   ✓   |      ✓     |    ✓   |
-| View own profile      |   ✓   |      ✓     |    ✓   |
-| Manage users          |   ✓   |      ✗     |    ✗   |
-| Create assets         |   ✓   |      ✗     |    ✗   |
-| View own assets       |   ✓   |      ✗     |    ✓   |
-| Generate QR           |   ✓   |      ✗     |    ✗   |
-| Scan QR               |   ✓   |      ✓     |    ✗   |
-| Manage work orders    |   ✓   |      ✗     |   Own  |
-| Manage schedules      |   ✓   |      ✗     |    ✗   |
-| Create maintenance    |   ✓   |      ✗     |    ✗   |
-| View maintenance      |   ✓   |     Own    |    ✗   |
-| Create reports        |   ✓   |     Own    |    ✗   |
-| View reports          |  All  |     Own    |   Own  |
-| Review reports        |   ✗   |      ✗     |    ✓   |
-| Reject reports        |   ✗   |      ✗     |    ✓   |
-| View rejected reports |   ✓   |      ✗     |    ✗   |
-| Reassign maintenance  |   ✓   |      ✗     |    ✗   |
+| Priority | Meaning                                     |
+| -------- | ------------------------------------------- |
+| LOW      | Minor issue                                 |
+| MEDIUM   | Normal maintenance issue                    |
+| HIGH     | Important issue requiring attention         |
+| CRITICAL | Serious issue requiring immediate attention |
 
 ---
 
-# 20. Error Responses
+# 23. Review Status
 
-The API uses standard HTTP status codes.
+| Status   | Meaning                    |
+| -------- | -------------------------- |
+| PENDING  | Waiting for client review  |
+| ACCEPTED | Client approved the report |
+| REJECTED | Client rejected the report |
 
-| Status | Meaning                               |
-| ------ | ------------------------------------- |
-| 200    | Successful request                    |
-| 201    | Resource created                      |
-| 400    | Invalid request                       |
-| 401    | Authentication required/invalid token |
-| 403    | Insufficient permissions              |
-| 404    | Resource not found                    |
-| 500    | Server error                          |
+---
+
+# 24. Error Handling
+
+The API returns standard HTTP status codes.
+
+| Code | Meaning                 |
+| ---- | ----------------------- |
+| 200  | Successful request      |
+| 201  | Resource created        |
+| 400  | Invalid request         |
+| 401  | Authentication required |
+| 403  | Permission denied       |
+| 404  | Resource not found      |
+| 405  | HTTP method not allowed |
+| 500  | Server error            |
 
 Example validation error:
 
 ```json
 {
-    "maintenance": [
-        "Invalid pk \"1\" - object does not exist."
-    ]
+    "detail": "Clients cannot create maintenance reports."
 }
 ```
 
-This means the referenced maintenance record does not exist.
-
 ---
 
-# 21. Project Structure
+# 25. Authorization Header
 
-A typical project structure is:
-
-```text
-AssetHub/
-│
-├── backend/
-│   │
-│   ├── manage.py
-│   │
-│   ├── backend/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   ├── wsgi.py
-│   │   └── asgi.py
-│   │
-│   └── api/
-│       ├── models.py
-│       ├── serializers.py
-│       ├── views.py
-│       ├── permissions.py
-│       ├── urls.py
-│       ├── admin.py
-│       └── migrations/
-│
-└── README.md
-```
-
----
-
-# 22. Installation
-
-Clone the project and enter the backend directory.
-
-Create a virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Activate it on Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-Install dependencies:
-
-```bash
-pip install django
-pip install djangorestframework
-pip install djangorestframework-simplejwt
-pip install qrcode
-```
-
-Run migrations:
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-Create an administrator:
-
-```bash
-python manage.py createsuperuser
-```
-
-Start the development server:
-
-```bash
-python manage.py runserver
-```
-
-The API will be available at:
-
-```text
-http://127.0.0.1:8000/
-```
-
----
-
-# 23. Database Migrations
-
-Whenever models are changed:
-
-```bash
-python manage.py makemigrations
-```
-
-Then:
-
-```bash
-python manage.py migrate
-```
-
-If Django reports a migration problem, check:
-
-```bash
-python manage.py showmigrations
-```
-
----
-
-# 24. Django System Check
-
-Before running the API, verify the project:
-
-```bash
-python manage.py check
-```
-
-A successful result should indicate:
-
-```text
-System check identified no issues
-```
-
----
-
-# 25. Postman Testing
-
-The recommended testing sequence is:
-
-### Step 1 — Login
+Authenticated requests should include:
 
 ```http
-POST /api/auth/token/
+Authorization: Bearer <access_token>
 ```
 
-### Step 2 — Create client/technician
-
-```http
-POST /api/users/
-```
-
-### Step 3 — Create asset
-
-```http
-POST /api/assets/
-```
-
-### Step 4 — Generate QR
-
-```http
-GET /api/assets/1/qr/
-```
-
-### Step 5 — Create work order
-
-```http
-POST /api/work-orders/
-```
-
-### Step 6 — Assign maintenance
-
-```http
-POST /api/maintenance/
-```
-
-### Step 7 — Technician views maintenance
-
-```http
-GET /api/maintenance/
-```
-
-### Step 8 — Technician creates report
-
-```http
-POST /api/maintenance-reports/
-```
-
-### Step 9 — Client views report
+Example:
 
 ```http
 GET /api/maintenance-reports/
+Authorization: Bearer eyJhbGciOiJIUzI1Ni...
 ```
 
-### Step 10 — Client accepts/rejects
+---
 
-```http
-POST /api/maintenance-reports/1/review/
+# 26. Core Business Rules
+
+AssetHub enforces several important business rules at the API level.
+
+### Asset
+
+An asset:
+
+* Must belong to a client.
+* Must belong to the client's company.
+* Has a QR token.
+* Can have its QR code activated/revoked.
+
+### Work Order
+
+A work order:
+
+* Belongs to a client.
+* Is associated with an asset.
+* Is associated with a company.
+* Cannot be created by a technician.
+
+### Maintenance
+
+A maintenance task:
+
+* Belongs to a work order.
+* Must be assigned to a technician.
+* Cannot be directly completed without a completed report.
+
+### Maintenance Report
+
+A report:
+
+* Belongs to one maintenance task.
+* Can only be created once per maintenance task.
+* Can only be created by the assigned technician.
+* Must be completed before client review.
+* Can only be reviewed once per review cycle.
+* Can be rejected and sent back for administrative reassignment.
+
+### Reassignment
+
+When a client rejects a report:
+
+```text
+REJECTED
+   ↓
+requires_admin_action = true
+   ↓
+Admin sees rejected report
+   ↓
+Admin reassigns technician
+   ↓
+review_status = PENDING
+   ↓
+maintenance = ASSIGNED
+   ↓
+Technician performs maintenance again
 ```
 
-### Step 11 — Admin checks rejected reports
+---
 
-```http
+# 27. Example End-to-End Workflow
+
+A typical AssetHub maintenance lifecycle is:
+
+### Step 1 — Admin creates company
+
+```text
+POST /api/companies/
+```
+
+### Step 2 — Admin creates client
+
+```text
+POST /api/users/
+```
+
+### Step 3 — Admin creates asset
+
+```text
+POST /api/assets/
+```
+
+The asset automatically receives the client's company.
+
+### Step 4 — Client creates work order
+
+```text
+POST /api/work-orders/
+```
+
+### Step 5 — Admin assigns technician
+
+```text
+POST /api/maintenance/
+```
+
+### Step 6 — Technician performs maintenance
+
+The technician scans the asset QR code:
+
+```text
+POST /api/qr/scan/{token}/
+```
+
+### Step 7 — Technician creates report
+
+```text
+POST /api/maintenance-reports/
+```
+
+### Step 8 — Client reviews report
+
+Accept:
+
+```text
+POST /api/maintenance-reports/{id}/review/
+```
+
+or reject:
+
+```text
+POST /api/maintenance-reports/{id}/review/
+```
+
+### Step 9 — If rejected
+
+Admin retrieves:
+
+```text
 GET /api/maintenance-reports/rejected/
 ```
 
-### Step 12 — Admin reassigns
-
-```http
-POST /api/maintenance-reports/1/reassign/
-```
-
----
-
-# 26. Development Workflow
-
-Recommended development workflow:
+### Step 10 — Admin reassigns
 
 ```text
-1. Update models
-       ↓
-2. Create migrations
-       ↓
-3. Run migrations
-       ↓
-4. Update serializers
-       ↓
-5. Update permissions
-       ↓
-6. Update views
-       ↓
-7. Update URLs
-       ↓
-8. Run django check
-       ↓
-9. Start server
-       ↓
-10. Test in Postman
-       ↓
-11. Connect frontend
+POST /maintenance-reports/{id}/reassign/
 ```
 
----
-
-# 27. Security Considerations
-
-AssetHub uses several security controls:
-
-* JWT authentication
-* Role-based permissions
-* Object-level access restrictions
-* Client ownership checks
-* Technician assignment checks
-* QR token validation
-* QR revocation
-* QR scan logging
-* Rejection workflow
-* Administrative reassignment
-
-Clients cannot access another client's assets or maintenance reports.
-
-Technicians cannot access maintenance assigned to another technician.
+The workflow then starts another maintenance cycle.
 
 ---
 
-# 28. API Design Principles
+# 28. API Security Model
 
-The API follows REST-style conventions:
-
-* `GET` retrieves resources
-* `POST` creates resources/actions
-* `PATCH` partially updates resources
-* `DELETE` removes resources
-
-Authentication is handled through JWT.
-
-Authorization is handled through DRF permission classes and role-based business logic.
-
----
-
-# 29. Future Enhancements
-
-Potential future improvements include:
-
-* File/image uploads for maintenance reports
-* PDF maintenance report generation
-* Email notifications
-* Push notifications
-* Maintenance reminders
-* Dashboard analytics
-* Asset maintenance history
-* QR scan analytics
-* Audit logs
-* Search and filtering
-* Pagination
-* API documentation with Swagger/OpenAPI
-* PostgreSQL production deployment
-* Cloud file storage
-* Frontend integration
-* Mobile application integration
-
----
-
-# 30. Production Deployment
-
-The Django development server should not be used for production.
-
-For production, consider:
+AssetHub follows a role-based access control model.
 
 ```text
-Frontend
-    │
-    ▼
-Vercel / Cloud Hosting
-    │
-    ▼
-Django REST API
-    │
-    ▼
-PostgreSQL
-    │
-    ├── Users
-    ├── Assets
-    ├── Work Orders
-    ├── Maintenance
-    ├── Reports
-    └── QR Scan Logs
+                    ┌──────────────┐
+                    │    ADMIN     │
+                    └──────┬───────┘
+                           │
+             ┌─────────────┼─────────────┐
+             ↓             ↓             ↓
+          Company        Assets      Maintenance
+             │                           │
+             ↓                           ↓
+          Clients                    Technicians
+                                         │
+                                         ↓
+                                   Reports
+                                         │
+                                         ↓
+                                      Client
+                                         │
+                              ┌──────────┴──────────┐
+                              ↓                     ↓
+                           ACCEPT                 REJECT
+                                                    │
+                                                    ↓
+                                                   ADMIN
+                                                    │
+                                                    ↓
+                                                REASSIGN
 ```
 
-Production deployment should also configure:
+---
 
-* `DEBUG=False`
-* Secure secret key
-* Allowed hosts
-* HTTPS
-* Production database
-* CORS
-* Secure cookies
-* Environment variables
-* Static/media storage
-* Database backups
+# 29. Recommended API Testing Order
+
+For Postman testing, use this order:
+
+1. Authentication
+2. Company creation
+3. Client creation
+4. Client profile
+5. Asset creation
+6. Asset retrieval
+7. QR code generation
+8. QR scanning
+9. Maintenance schedule
+10. Work order creation
+11. Maintenance assignment
+12. Technician maintenance access
+13. Maintenance report creation
+14. Client report access
+15. Client report acceptance
+16. Client report rejection
+17. Admin rejected-report list
+18. Maintenance reassignment
+19. Technician receives reassigned maintenance
+20. Second maintenance report
+21. Client accepts final report
+
+This sequence validates the complete business workflow rather than testing isolated endpoints.
 
 ---
 
-# 31. API Status
-
-Current AssetHub API capabilities:
-
-* [x] JWT authentication
-* [x] Role-based access control
-* [x] User management
-* [x] Asset management
-* [x] QR code generation
-* [x] QR scanning
-* [x] QR scan logging
-* [x] Maintenance schedules
-* [x] Work orders
-* [x] Technician assignment
-* [x] Maintenance reports
-* [x] Client report review
-* [x] Report acceptance
-* [x] Report rejection
-* [x] Admin rejected-report workflow
-* [x] Maintenance reassignment
-* [x] Role-based maintenance filtering
-
----
-
-# 32. Conclusion
-
-AssetHub provides a centralized API for managing assets and their maintenance lifecycle.
-
-The platform establishes a controlled workflow between administrators, technicians, and clients:
+# 30. Current API Architecture
 
 ```text
-Asset
-  ↓
-Work Order
-  ↓
-Maintenance
-  ↓
-Technician
-  ↓
-Maintenance Report
-  ↓
-Client Review
-  ↓
-┌───────────────┐
-│               │
-ACCEPT        REJECT
-│               │
-▼               ▼
-Complete       Admin
-                 ↓
-             Reassign
-                 ↓
-             Technician
+                    AssetHub API
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+        Authentication          RBAC Layer
+              │                     │
+              └──────────┬──────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+     Company           Assets          Users
+        │                │
+        │                └──── QR Codes
+        │
+        └────────────── Work Orders
+                              │
+                              ↓
+                         Maintenance
+                              │
+                              ↓
+                    Maintenance Reports
+                              │
+                    ┌─────────┴─────────┐
+                    ↓                   ↓
+                 ACCEPT               REJECT
+                                        │
+                                        ↓
+                                     ADMIN
+                                        │
+                                        ↓
+                                   REASSIGN
 ```
 
-This architecture provides a scalable foundation for connecting the AssetHub API to a web dashboard, mobile application, or other client applications.
+---
+
+## 31. Important Implementation Note
+
+The current API already supports the core maintenance lifecycle:
+
+**Company → Client → Asset → Work Order → Technician → Maintenance → Report → Client Review → Accept/Reject → Reassignment**
+
+This is the primary business workflow of AssetHub and should be treated as the core integration contract when building the frontend/mobile application.

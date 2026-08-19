@@ -5,6 +5,9 @@ URL configuration for backend project.
 from django.contrib import admin
 from django.urls import path
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -13,6 +16,7 @@ from rest_framework_simplejwt.views import (
 from api.views import (
     CompanyDetailView,
     CompanyListCreateView,
+    MaintenanceReportPhotoUploadView,
     MeView,
     ProfileView,
 
@@ -248,4 +252,15 @@ path(
     CompanyDetailView.as_view(),
     name="company-detail",
 ),
+
+path(
+    "api/maintenance-reports/<int:pk>/photos/",
+    MaintenanceReportPhotoUploadView.as_view(),
+    name="maintenance-report-photo-upload",
+),
 ]
+
+urlpatterns += static(
+    settings.MEDIA_URL,
+    document_root=settings.MEDIA_ROOT,
+)

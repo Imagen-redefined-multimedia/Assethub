@@ -148,3 +148,6 @@ MAILERS = {
 AUTH_USER_MODEL = 'api.User'
 
 ASSETHUB_BASE_URL = "http://127.0.0.1:8000"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

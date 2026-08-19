@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.migrations import serializer
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -19,6 +18,7 @@ from .models import (
     MaintenanceSchedule,
     QRScanLog,
     MaintenanceReport,
+    MaintenanceReportPhoto,
     WorkOrder,
 )
 
@@ -1148,4 +1148,133 @@ class MaintenanceReassignView(APIView):
                 "reassignment_count": report.reassignment_count,
             },
             status=200,
+        )
+
+
+    # ============================================================
+# MAINTENANCE REPORT PHOTOS
+# ADMIN + ASSIGNED TECHNICIAN
+# ============================================================
+
+class MaintenanceReportPhotoUploadView(
+    APIView
+):
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def post(self, request, pk):
+
+        user = request.user
+
+        # ----------------------------------------------------
+        # FIND REPORT
+        # ----------------------------------------------------
+
+        try:
+            report = MaintenanceReport.objects.select_related(
+                "maintenance",
+                "maintenance__technician",
+                "maintenance__work_order",
+                "maintenance__work_order__client",
+            ).get(pk=pk)
+
+        except MaintenanceReport.DoesNotExist:
+
+            return Response(
+                {
+                    "detail": "Maintenance report not found."
+                },
+                status=404,
+            )
+
+        maintenance = report.maintenance
+
+        # ----------------------------------------------------
+        # PERMISSION CHECK
+        # ----------------------------------------------------
+
+        if user.role == User.Role.CLIENT:
+
+            raise PermissionDenied(
+                "Clients cannot upload maintenance photos."
+            )
+
+        if user.role == User.Role.TECHNICIAN:
+
+            if maintenance.technician != user:
+
+                raise PermissionDenied(
+                    "You can only upload photos to your assigned maintenance report."
+                )
+
+        # ----------------------------------------------------
+        # ACCEPTED REPORTS ARE LOCKED
+        # ----------------------------------------------------
+
+        if (
+            report.review_status
+            == MaintenanceReport.ReviewStatus.ACCEPTED
+        ):
+
+            raise ValidationError(
+                "This maintenance report has already been accepted and cannot be modified."
+            )
+
+        # ----------------------------------------------------
+        # IMAGE REQUIRED
+        # ----------------------------------------------------
+
+        image = request.FILES.get("image")
+
+        if not image:
+
+            raise ValidationError(
+                "An image is required."
+            )
+
+        # ----------------------------------------------------
+        # PHOTO TYPE
+        # ----------------------------------------------------
+
+        photo_type = request.data.get(
+            "photo_type"
+        )
+
+        if photo_type not in [
+            MaintenanceReportPhoto.PhotoType.ISSUE,
+            MaintenanceReportPhoto.PhotoType.FIXED,
+        ]:
+
+            raise ValidationError(
+                "photo_type must be ISSUE or FIXED."
+            )
+
+        # ----------------------------------------------------
+        # CREATE PHOTO
+        # ----------------------------------------------------
+
+        photo = MaintenanceReportPhoto.objects.create(
+            report=report,
+            image=image,
+            photo_type=photo_type,
+        )
+
+        # ----------------------------------------------------
+        # RESPONSE
+        # ----------------------------------------------------
+
+        return Response(
+            {
+                "message": "Maintenance report photo uploaded successfully.",
+                "photo": {
+                    "id": photo.id,
+                    "report_id": report.id,
+                    "image": photo.image.url,
+                    "photo_type": photo.photo_type,
+                    "uploaded_at": photo.uploaded_at,
+                },
+            },
+            status=201,
         )
