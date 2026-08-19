@@ -72,17 +72,23 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         return user
 
-
 class AssetSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(
+        source="company.name",
+        read_only=True
+    )
+
     client_username = serializers.CharField(
         source="client.username",
-        read_only=True,
+        read_only=True
     )
 
     class Meta:
         model = Asset
         fields = [
             "id",
+            "company",
+            "company_name",
             "client",
             "client_username",
             "name",
@@ -98,6 +104,8 @@ class AssetSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "company_name",
+            "client_username",
             "qr_active",
             "qr_created_at",
             "qr_revoked_at",
@@ -105,14 +113,6 @@ class AssetSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-    def validate_client(self, value):
-        if value.role != User.Role.CLIENT:
-            raise serializers.ValidationError(
-                "The selected user must be a Client."
-            )
-
-        return value
 
 class MaintenanceReportSerializer(serializers.ModelSerializer):
     technician_username = serializers.CharField(

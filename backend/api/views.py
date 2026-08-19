@@ -24,6 +24,7 @@ from .models import (
 from .permissions import (
     IsAdmin,
     IsAdminOrOwnClient,
+    IsAdminOrOwnCompany,
     IsAdminOrTechnician,
     IsMaintenanceReportAllowed,
 )
@@ -153,23 +154,31 @@ class AssetListCreateView(generics.ListCreateAPIView):
 
         if user.role == User.Role.CLIENT:
             return Asset.objects.filter(
-                client=user
-            ).order_by("-created_at")
+            company=user.company
+             ).order_by("-created_at")
 
         # Technicians cannot see assets directly
-        return Asset.objects.none()
+        return Asset.objects.select_related(
+                "company",
+                "client",
+            ).filter(
+                company=user.company
+            ).order_by("-created_at")
 
 
 class AssetDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = AssetSerializer
-    queryset = Asset.objects.all()
+    queryset = Asset.objects.select_related(
+        "company",
+        "client",
+    )
 
     def get_permissions(self):
         return [
             IsAuthenticated(),
-            IsAdminOrOwnClient(),
+            IsAdminOrOwnCompany(),
         ]
 
 

@@ -227,6 +227,14 @@ class WorkOrder(models.Model):
         limit_choices_to={"role": User.Role.CLIENT},
     )
 
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="work_orders",
+        null=True,
+        blank=True,
+    )
+
     asset = models.ForeignKey(
         Asset,
         on_delete=models.CASCADE,
@@ -247,7 +255,6 @@ class WorkOrder(models.Model):
 
     def __str__(self):
         return f"WO-{self.id}: {self.title}"
-
 
 class Maintenance(models.Model):
 

@@ -77,3 +77,24 @@ class IsMaintenanceReportAllowed(BasePermission):
             return work_order.client == user
 
         return False
+
+class IsAdminOrOwnCompany(BasePermission):
+    message = "You do not have permission to access this company's asset."
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+        )
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == User.Role.ADMIN:
+            return True
+
+        if request.user.role == User.Role.CLIENT:
+            return (
+                obj.company_id is not None
+                and request.user.company_id == obj.company_id
+            )
+
+        return False
