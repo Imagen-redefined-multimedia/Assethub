@@ -6,12 +6,42 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+    registration_number = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    address = models.TextField(blank=True)
+    logo = models.ImageField(
+        upload_to="companies/logos/",
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = "ADMIN", "Admin"
         TECHNICIAN = "TECHNICIAN", "Technician"
         CLIENT = "CLIENT", "Client"
+
+    company = models.ForeignKey(
+    Company,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="users",
+)
 
     role = models.CharField(
         max_length=20,
