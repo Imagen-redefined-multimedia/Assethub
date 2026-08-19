@@ -61,6 +61,14 @@ class Asset(models.Model):
         limit_choices_to={"role": User.Role.CLIENT},
     )
 
+    company = models.ForeignKey(
+    Company,
+    on_delete=models.CASCADE,
+    related_name="assets",
+    null=True,
+    blank=True,
+    )
+    
     name = models.CharField(max_length=255)
     serial_number = models.CharField(
         max_length=100,
