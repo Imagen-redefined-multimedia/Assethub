@@ -212,13 +212,104 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
         ]
 
 class MaintenanceSerializer(serializers.ModelSerializer):
+
+    # ========================================================
+    # TECHNICIAN
+    # ========================================================
+
     technician_username = serializers.CharField(
         source="technician.username",
         read_only=True,
     )
 
+    # ========================================================
+    # WORK ORDER
+    # ========================================================
+
     work_order_title = serializers.CharField(
         source="work_order.title",
+        read_only=True,
+    )
+
+    work_order_description = serializers.CharField(
+        source="work_order.description",
+        read_only=True,
+    )
+
+    work_order_status = serializers.CharField(
+        source="work_order.status",
+        read_only=True,
+    )
+
+    # ========================================================
+    # CLIENT
+    # ========================================================
+
+    client_id = serializers.IntegerField(
+        source="work_order.client.id",
+        read_only=True,
+    )
+
+    client_username = serializers.CharField(
+        source="work_order.client.username",
+        read_only=True,
+    )
+
+    client_email = serializers.EmailField(
+        source="work_order.client.email",
+        read_only=True,
+    )
+
+    client_first_name = serializers.CharField(
+        source="work_order.client.first_name",
+        read_only=True,
+    )
+
+    client_last_name = serializers.CharField(
+        source="work_order.client.last_name",
+        read_only=True,
+    )
+
+    # ========================================================
+    # CLIENT COMPANY
+    # ========================================================
+
+    company_id = serializers.IntegerField(
+        source="work_order.client.company.id",
+        read_only=True,
+    )
+
+    company_name = serializers.CharField(
+        source="work_order.client.company.name",
+        read_only=True,
+    )
+
+    company_registration_number = serializers.CharField(
+        source="work_order.client.company.registration_number",
+        read_only=True,
+    )
+
+    company_email = serializers.EmailField(
+        source="work_order.client.company.email",
+        read_only=True,
+    )
+
+    company_phone = serializers.CharField(
+        source="work_order.client.company.phone",
+        read_only=True,
+    )
+
+    company_address = serializers.CharField(
+        source="work_order.client.company.address",
+        read_only=True,
+    )
+
+    # ========================================================
+    # ASSET
+    # ========================================================
+
+    asset_id = serializers.IntegerField(
+        source="work_order.asset.id",
         read_only=True,
     )
 
@@ -227,16 +318,55 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    asset_serial_number = serializers.CharField(
+        source="work_order.asset.serial_number",
+        read_only=True,
+    )
+
+    asset_description = serializers.CharField(
+        source="work_order.asset.description",
+        read_only=True,
+    )
+
     class Meta:
         model = Maintenance
 
         fields = [
+            # Maintenance
             "id",
+
+            # Work order
             "work_order",
             "work_order_title",
+            "work_order_description",
+            "work_order_status",
+
+            # Company
+            "company_id",
+            "company_name",
+            "company_registration_number",
+            "company_email",
+            "company_phone",
+            "company_address",
+
+            # Client
+            "client_id",
+            "client_username",
+            "client_email",
+            "client_first_name",
+            "client_last_name",
+
+            # Asset
+            "asset_id",
             "asset_name",
+            "asset_serial_number",
+            "asset_description",
+
+            # Technician
             "technician",
             "technician_username",
+
+            # Maintenance
             "description",
             "status",
             "created_at",
@@ -245,18 +375,42 @@ class MaintenanceSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+
             "work_order_title",
+            "work_order_description",
+            "work_order_status",
+
+            "company_id",
+            "company_name",
+            "company_registration_number",
+            "company_email",
+            "company_phone",
+            "company_address",
+
+            "client_id",
+            "client_username",
+            "client_email",
+            "client_first_name",
+            "client_last_name",
+
+            "asset_id",
             "asset_name",
+            "asset_serial_number",
+            "asset_description",
+
             "technician_username",
+
             "created_at",
             "updated_at",
         ]
-
-class WorkOrderSerializer(
-    serializers.ModelSerializer
-):
+class WorkOrderSerializer(serializers.ModelSerializer):
     client_username = serializers.CharField(
         source="client.username",
+        read_only=True,
+    )
+
+    company_name = serializers.CharField(
+        source="company.name",
         read_only=True,
     )
 
@@ -267,8 +421,11 @@ class WorkOrderSerializer(
 
     class Meta:
         model = WorkOrder
+
         fields = [
             "id",
+            "company",
+            "company_name",
             "client",
             "client_username",
             "asset",
@@ -279,43 +436,15 @@ class WorkOrderSerializer(
             "created_at",
             "updated_at",
         ]
+
         read_only_fields = [
-            "created_at",
-            "updated_at",
-        ]
-
-class WorkOrderSerializer(
-    serializers.ModelSerializer
-):
-    client_username = serializers.CharField(
-        source="client.username",
-        read_only=True,
-    )
-
-    asset_name = serializers.CharField(
-        source="asset.name",
-        read_only=True,
-    )
-
-    class Meta:
-        model = WorkOrder
-        fields = [
             "id",
-            "client",
+            "company_name",
             "client_username",
-            "asset",
             "asset_name",
-            "title",
-            "description",
-            "status",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = [
-            "created_at",
-            "updated_at",
-        ]
-        
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company

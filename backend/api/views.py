@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.migrations import serializer
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -131,7 +132,6 @@ class UserDetailView(
 # ============================================================
 # ASSETS
 # ============================================================
-
 class AssetListCreateView(generics.ListCreateAPIView):
     serializer_class = AssetSerializer
 
@@ -149,22 +149,53 @@ class AssetListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
+        # ADMIN
         if user.role == User.Role.ADMIN:
-            return Asset.objects.all().order_by("-created_at")
+            return Asset.objects.select_related(
+                "company",
+                "client",
+            ).all().order_by("-created_at")
 
+        # CLIENT
         if user.role == User.Role.CLIENT:
-            return Asset.objects.filter(
-            company=user.company
-             ).order_by("-created_at")
-
-        # Technicians cannot see assets directly
-        return Asset.objects.select_related(
+            return Asset.objects.select_related(
                 "company",
                 "client",
             ).filter(
                 company=user.company
             ).order_by("-created_at")
 
+        # TECHNICIAN
+        if user.role == User.Role.TECHNICIAN:
+            return Asset.objects.select_related(
+                "company",
+                "client",
+            ).filter(
+                company=user.company
+            ).order_by("-created_at")
+
+        return Asset.objects.none()
+
+    def perform_create(self, serializer):
+
+        client = serializer.validated_data["client"]
+
+        # Make sure the selected user is a client
+        if client.role != User.Role.CLIENT:
+            raise ValidationError(
+                "Asset can only be assigned to a client."
+            )
+
+        # Make sure the client belongs to a company
+        if not client.company:
+            raise ValidationError(
+                "This client is not associated with a company."
+            )
+
+        # Automatically attach the client's company
+        serializer.save(
+            company=client.company
+        )
 
 class AssetDetailView(
     generics.RetrieveUpdateDestroyAPIView
@@ -442,6 +473,8 @@ class MaintenanceListCreateView(
             return Maintenance.objects.select_related(
                 "work_order",
                 "technician",
+                "work_order__client",
+                "work_order__client__company",
                 "work_order__asset",
             ).order_by("-created_at")
 
@@ -449,6 +482,8 @@ class MaintenanceListCreateView(
             return Maintenance.objects.select_related(
                 "work_order",
                 "technician",
+                "work_order__client",
+                "work_order__client__company",
                 "work_order__asset",
             ).filter(
                 technician=user
@@ -718,7 +753,32 @@ class WorkOrderListCreateView(
                 "Technicians cannot create work orders."
             )
 
-        serializer.save()
+        if user.role == User.Role.CLIENT:
+
+            if not user.company:
+                raise ValidationError(
+                    "Your account is not attached to a company."
+                )
+
+            serializer.save(
+                client=user,
+                company=user.company,
+            )
+
+            return
+
+        if user.role == User.Role.ADMIN:
+
+            client = serializer.validated_data["client"]
+
+            if not client.company:
+                raise ValidationError(
+                    "This client is not attached to a company."
+                )
+
+            serializer.save(
+                company=client.company,
+            )
 
 
 class WorkOrderDetailView(
@@ -938,6 +998,8 @@ class MaintenanceDetailView(
         queryset = Maintenance.objects.select_related(
             "work_order",
             "technician",
+            "work_order__client",
+            "work_order__client__company",
             "work_order__asset",
         )
 
@@ -945,13 +1007,42 @@ class MaintenanceDetailView(
         if user.role == User.Role.ADMIN:
             return queryset
 
-        # Technician sees only their assigned maintenance
+        # Technician sees only assigned maintenance
         if user.role == User.Role.TECHNICIAN:
             return queryset.filter(
                 technician=user
             )
 
         return queryset.none()
+
+    def update(self, request, *args, **kwargs):
+
+        maintenance = self.get_object()
+
+        new_status = request.data.get("status")
+
+        # ------------------------------------------------
+        # PREVENT DIRECT COMPLETION
+        # ------------------------------------------------
+
+        if new_status == Maintenance.Status.COMPLETED:
+
+            report_exists = MaintenanceReport.objects.filter(
+                maintenance=maintenance,
+                status=MaintenanceReport.Status.COMPLETED,
+            ).exists()
+
+            if not report_exists:
+
+                raise ValidationError(
+                    "Maintenance cannot be completed until a completed maintenance report has been submitted."
+                )
+
+        return super().update(
+            request,
+            *args,
+            **kwargs
+        )
 # ============================================================
 # ADMIN - REASSIGN MAINTENANCE
 # ============================================================
