@@ -237,6 +237,7 @@ AUTH_USER_MODEL = "api.User"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.30.32:3000",
+    os.environ.get("ASSETHUB_FRONTEND_URL")
 ]
 
 ASSETHUB_BASE_URL = os.environ.get(
