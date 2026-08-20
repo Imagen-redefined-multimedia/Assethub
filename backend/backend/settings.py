@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
@@ -102,6 +103,7 @@ SIMPLE_JWT = {
 # ============================================================
 
 MIDDLEWARE = [
+     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -231,6 +233,11 @@ AUTH_USER_MODEL = "api.User"
 # ============================================================
 # ASSET HUB
 # ============================================================
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://192.168.30.32:3000",
+]
 
 ASSETHUB_BASE_URL = os.environ.get(
     "ASSETHUB_BASE_URL",
