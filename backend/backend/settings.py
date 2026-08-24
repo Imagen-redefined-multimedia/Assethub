@@ -37,7 +37,7 @@ DEBUG = os.environ.get(
 ).lower() == "true"
 
 ALLOWED_HOSTS = [ 
-        "https://assethub-phi.vercel.app",
+        "assethub-phi.vercel.app",
         "localhost,127.0.0.1"
 ]
 
