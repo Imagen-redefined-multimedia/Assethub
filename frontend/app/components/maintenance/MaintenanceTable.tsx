@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -40,15 +41,19 @@ export default function MaintenanceTable() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-lg border ">
+    <div className="overflow-hidden rounded-lg border bg-background text-foreground shadow-sm">
+      {/* Header */}
       <div className="border-b px-6 py-4">
-        <h2 className="font-semibold">Maintenance Reports</h2>
+        <h2 className="font-semibold">
+          Maintenance Reports
+        </h2>
 
         <p className="text-sm text-muted-foreground">
           Review maintenance activity across your assets.
         </p>
       </div>
 
+      {/* Loading */}
       {loading ? (
         <div className="flex min-h-64 items-center justify-center px-6">
           <p className="text-sm text-muted-foreground">
@@ -56,9 +61,10 @@ export default function MaintenanceTable() {
           </p>
         </div>
       ) : error ? (
+        /* Error */
         <div className="flex min-h-64 items-center justify-center px-6 text-center">
           <div>
-            <h3 className="font-medium text-red-600">
+            <h3 className="font-medium text-destructive">
               Failed to load reports
             </h3>
 
@@ -68,6 +74,7 @@ export default function MaintenanceTable() {
           </div>
         </div>
       ) : reports.length === 0 ? (
+        /* Empty state */
         <div className="flex min-h-64 items-center justify-center px-6 text-center">
           <div>
             <h3 className="font-medium">
@@ -81,6 +88,7 @@ export default function MaintenanceTable() {
           </div>
         </div>
       ) : (
+        /* Table */
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/50">
@@ -115,15 +123,19 @@ export default function MaintenanceTable() {
               </tr>
             </thead>
 
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border">
               {reports.map((report) => (
-                <tr key={report.id}>
+                <tr
+                  key={report.id}
+                  className="transition-colors hover:bg-muted/40"
+                >
                   <td className="px-6 py-4 font-medium">
-                    {report.asset_name}
+                    {report.asset_name || `Asset #${report.asset_id}`}
                   </td>
 
-                  <td className="px-6 py-4">
-                    {report.technician_username}
+                  <td className="px-6 py-4 text-muted-foreground">
+                    {report.technician_username ||
+                      `Technician #${report.technician}`}
                   </td>
 
                   <td className="px-6 py-4">
@@ -139,10 +151,12 @@ export default function MaintenanceTable() {
                   </td>
 
                   <td className="px-6 py-4">
-                    {report.review_status}
+                    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium">
+                      {report.review_status || "PENDING"}
+                    </span>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-muted-foreground">
                     {new Date(
                       report.created_at
                     ).toLocaleDateString()}
@@ -151,7 +165,7 @@ export default function MaintenanceTable() {
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/maintenance/${report.id}`}
-                      className="font-medium hover:underline"
+                      className="font-medium text-primary hover:underline"
                     >
                       View
                     </Link>
@@ -165,3 +179,4 @@ export default function MaintenanceTable() {
     </div>
   );
 }
+
