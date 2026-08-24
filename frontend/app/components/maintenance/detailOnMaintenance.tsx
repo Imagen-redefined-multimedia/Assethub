@@ -73,7 +73,7 @@ export default function IDMaintenance() {
           ← Back
         </button>
 
-        <div className="rounded-lg border bg-white p-6">
+        <div className="rounded-lg border  p-6">
           <h1 className="font-semibold text-red-600">
             Unable to load report
           </h1>
@@ -120,7 +120,7 @@ export default function IDMaintenance() {
 
       {/* Asset / Technician */}
       <div className="grid gap-6 md:grid-cols-2">
-        <section className="rounded-lg border bg-white p-6">
+        <section className="rounded-lg border  p-6">
           <h2 className="font-semibold">Asset</h2>
 
           <div className="mt-4 space-y-3">
@@ -156,7 +156,7 @@ export default function IDMaintenance() {
           </div>
         </section>
 
-        <section className="rounded-lg border bg-white p-6">
+        <section className="rounded-lg border  p-6">
           <h2 className="font-semibold">Technician</h2>
 
           <div className="mt-4 space-y-3">
@@ -186,7 +186,7 @@ export default function IDMaintenance() {
       </div>
 
       {/* Summary */}
-      <section className="rounded-lg border bg-white p-6">
+      <section className="rounded-lg border  p-6">
         <h2 className="font-semibold">Summary</h2>
 
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -195,7 +195,7 @@ export default function IDMaintenance() {
       </section>
 
       {/* Findings */}
-      <section className="rounded-lg border bg-white p-6">
+      <section className="rounded-lg border  p-6">
         <h2 className="font-semibold">Findings</h2>
 
         <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
@@ -205,7 +205,7 @@ export default function IDMaintenance() {
 
       {/* Work performed / Parts */}
       <div className="grid gap-6 md:grid-cols-2">
-        <section className="rounded-lg border bg-white p-6">
+        <section className="rounded-lg border  p-6">
           <h2 className="font-semibold">Work Performed</h2>
 
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
@@ -213,7 +213,7 @@ export default function IDMaintenance() {
           </p>
         </section>
 
-        <section className="rounded-lg border bg-white p-6">
+        <section className="rounded-lg border  p-6">
           <h2 className="font-semibold">Parts Replaced</h2>
 
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
@@ -223,7 +223,7 @@ export default function IDMaintenance() {
       </div>
 
       {/* Photos */}
-      <section className="rounded-lg border bg-white p-6">
+      <section className="rounded-lg border  p-6">
         <h2 className="font-semibold">Photos</h2>
 
         {report.photos?.length > 0 ? (
@@ -252,7 +252,7 @@ export default function IDMaintenance() {
       </section>
 
       {/* Review */}
-      <section className="rounded-lg border bg-white p-6">
+      <section className="rounded-lg border  p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">Review</h2>
