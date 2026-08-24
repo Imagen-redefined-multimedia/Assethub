@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { useRouter } from "next/navigation";
 import { apiFetch, apiJson } from "@/lib/api";
 
 type Company = {
@@ -53,6 +54,8 @@ export default function AssetsPage() {
   const [clients, setClients] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
 
+  const router = useRouter();
+  
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -624,9 +627,7 @@ export default function AssetsPage() {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() =>
-                            handleDownloadQR(asset)
-                          }
+                          onClick={() => router.push(`/assets/qr/${asset.id}`)}
                           disabled={
                             !asset.qr_active ||
                             qrLoading === asset.id
