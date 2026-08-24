@@ -40,7 +40,7 @@ export default function MaintenanceTable() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
+    <div className="overflow-hidden rounded-lg border ">
       <div className="border-b px-6 py-4">
         <h2 className="font-semibold">Maintenance Reports</h2>
 
@@ -83,7 +83,7 @@ export default function MaintenanceTable() {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-gray-50">
+            <thead className="border-b bg-muted/50">
               <tr>
                 <th className="px-6 py-3 text-left font-medium">
                   Asset
