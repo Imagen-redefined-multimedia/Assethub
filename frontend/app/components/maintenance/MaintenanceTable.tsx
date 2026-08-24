@@ -41,13 +41,12 @@ export default function MaintenanceTable() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-background text-foreground shadow-sm">
+    <div className="overflow-hidden rounded-lg  border-slate-800 bg-slate-900 text-foreground shadow-sm">
       {/* Header */}
       <div className="border-b px-6 py-4">
         <h2 className="font-semibold">
           Maintenance Reports
         </h2>
-
         <p className="text-sm text-muted-foreground">
           Review maintenance activity across your assets.
         </p>

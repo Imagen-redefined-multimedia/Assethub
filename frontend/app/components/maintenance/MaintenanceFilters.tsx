@@ -8,7 +8,7 @@ export default function MaintenanceFilters() {
   const [priority, setPriority] = useState("ALL");
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 md:flex-row">
+    <div className="flex flex-col gap-3 rounded-lg border overflow-hidden  border border-slate-800 bg-slate-900 p-4 md:flex-row">
       <input
         type="search"
         placeholder="Search maintenance reports..."
