@@ -4,7 +4,7 @@
 import { usePathname } from "next/navigation";
 
 const pageNames: Record<string, string> = {
-  "/dashboard": "Dashboard",
+  "/home": "Dashboard",
   "/companies": "Companies",
   "/users": "Users",
   "/assets": "Assets",
