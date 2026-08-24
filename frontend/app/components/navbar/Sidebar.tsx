@@ -188,9 +188,9 @@ function getNavigation(
           icon: "🔧",
         },
         {
-          label: "Inspections",
-          href: "",
-          icon: "🔧",
+          label: "QR Scanner",
+          href: "/assets/qr-scanner",
+          icon: "▦",
         },
         
         {
@@ -208,11 +208,7 @@ function getNavigation(
           href: "/rejected-reports",
           icon: "⚠",
         },
-        {
-          label: "QR Scanner",
-          href: "/assets/qr-scanner",
-          icon: "▦",
-        },
+        
       ];
 
     case "TECHNICIAN":
