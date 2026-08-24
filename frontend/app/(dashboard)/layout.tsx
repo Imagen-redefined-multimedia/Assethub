@@ -1,11 +1,12 @@
-
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Sidebar from "../components/navbar/Sidebar";
+import Navbar from "../components/navbar/Navbar";
 
-import Sidebar from "@/app/components/navbar/Sidebar";
-import Navbar from "@/app/components/navbar/Navbar";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type User = {
   username: string;
@@ -15,9 +16,6 @@ type User = {
   company?: number | null;
   company_name?: string | null;
 };
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function DashboardLayout({
   children,
@@ -48,13 +46,11 @@ export default function DashboardLayout({
         if (!response.ok) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-
           router.replace("/login");
           return;
         }
 
         const data = await response.json();
-
         setUser(data);
       } catch {
         router.replace("/login");
@@ -99,4 +95,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
