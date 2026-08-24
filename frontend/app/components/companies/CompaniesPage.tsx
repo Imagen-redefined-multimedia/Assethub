@@ -2,9 +2,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { apiJson, apiFetch } from "@/lib/api";
 
 type Company = {
   id: number;
@@ -35,41 +33,22 @@ export default function CompaniesPage() {
     name: "",
   });
 
+  // ============================================================
+  // LOAD COMPANIES
+  // ============================================================
+
   async function getCompanies() {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
-
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/api/companies/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const data = await apiJson<
+        Company[] | { results: Company[] }
+      >("/api/companies/");
+
+      setCompanies(
+        Array.isArray(data) ? data : data.results ?? []
       );
-
-      if (response.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("Unable to load companies.");
-      }
-
-      const data = await response.json();
-
-      setCompanies(Array.isArray(data) ? data : data.results ?? []);
     } catch (err) {
       setError(
         err instanceof Error
@@ -85,6 +64,10 @@ export default function CompaniesPage() {
     getCompanies();
   }, []);
 
+  // ============================================================
+  // SEARCH
+  // ============================================================
+
   const filteredCompanies = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -97,11 +80,17 @@ export default function CompaniesPage() {
     );
   }, [companies, search]);
 
+  // ============================================================
+  // MODAL
+  // ============================================================
+
   function openCreateModal() {
     setEditingCompany(null);
+
     setForm({
       name: "",
     });
+
     setError("");
     setSuccess("");
     setShowModal(true);
@@ -109,9 +98,11 @@ export default function CompaniesPage() {
 
   function openEditModal(company: Company) {
     setEditingCompany(company);
+
     setForm({
       name: company.name,
     });
+
     setError("");
     setSuccess("");
     setShowModal(true);
@@ -128,7 +119,13 @@ export default function CompaniesPage() {
     });
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  // ============================================================
+  // CREATE / UPDATE
+  // ============================================================
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     const token = localStorage.getItem("access_token");
@@ -152,25 +149,23 @@ export default function CompaniesPage() {
 
       const isEditing = Boolean(editingCompany);
 
-      const response = await fetch(
+      const response = await apiFetch(
         isEditing
-          ? `${API_URL}/api/companies/${editingCompany?.id}/`
-          : `${API_URL}/api/companies/`,
+          ? `/api/companies/${editingCompany!.id}/`
+          : "/api/companies/",
         {
           method: isEditing ? "PATCH" : "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             name,
           }),
         }
       );
 
+      // Handle expired/invalid token first
       if (response.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+
         window.location.href = "/login";
         return;
       }
@@ -180,7 +175,9 @@ export default function CompaniesPage() {
       if (!response.ok) {
         throw new Error(
           extractApiError(data) ||
-            `Unable to ${isEditing ? "update" : "create"} company.`
+            `Unable to ${
+              isEditing ? "update" : "create"
+            } company.`
         );
       }
 
@@ -209,6 +206,10 @@ export default function CompaniesPage() {
     }
   }
 
+  // ============================================================
+  // DELETE
+  // ============================================================
+
   async function handleDelete(company: Company) {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${company.name}"?`
@@ -227,19 +228,18 @@ export default function CompaniesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(
-        `${API_URL}/api/companies/${company.id}/`,
+      const response = await apiFetch(
+        `/api/companies/${company.id}/`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
 
+      // Handle expired token
       if (response.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+
         window.location.href = "/login";
         return;
       }
@@ -265,9 +265,15 @@ export default function CompaniesPage() {
     }
   }
 
+  // ============================================================
+  // UI
+  // ============================================================
+
   return (
     <div className="space-y-8">
+
       {/* Header */}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-400">
@@ -292,12 +298,15 @@ export default function CompaniesPage() {
         </button>
       </div>
 
-      {/* Feedback */}
+      {/* Success */}
+
       {success && (
         <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-5 py-4 text-sm text-emerald-300">
           {success}
         </div>
       )}
+
+      {/* Error */}
 
       {error && !showModal && (
         <div className="rounded-xl border border-red-900 bg-red-950/30 px-5 py-4 text-sm text-red-300">
@@ -306,7 +315,9 @@ export default function CompaniesPage() {
       )}
 
       {/* Stats */}
+
       <div className="grid gap-4 sm:grid-cols-2">
+
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <p className="text-sm text-slate-400">
             Total Companies
@@ -326,12 +337,17 @@ export default function CompaniesPage() {
             {filteredCompanies.length}
           </p>
         </div>
+
       </div>
 
-      {/* Main Card */}
+      {/* Companies Table */}
+
       <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+
         {/* Toolbar */}
+
         <div className="flex flex-col gap-4 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
+
           <div>
             <h2 className="font-semibold text-white">
               Registered Companies
@@ -342,7 +358,7 @@ export default function CompaniesPage() {
             </p>
           </div>
 
-          <div className="relative w-full md:w-80">
+          <div className="w-full md:w-80">
             <input
               type="search"
               value={search}
@@ -353,15 +369,19 @@ export default function CompaniesPage() {
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500"
             />
           </div>
+
         </div>
 
         {/* Loading */}
+
         {loading ? (
           <div className="flex min-h-60 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
           </div>
         ) : filteredCompanies.length === 0 ? (
+
           <div className="p-12 text-center">
+
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl text-slate-500">
               ▣
             </div>
@@ -387,12 +407,18 @@ export default function CompaniesPage() {
                 Add Company
               </button>
             )}
+
           </div>
+
         ) : (
+
           <div className="overflow-x-auto">
+
             <table className="w-full min-w-[650px]">
+
               <thead>
                 <tr className="border-b border-slate-800 text-left">
+
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Company
                   </th>
@@ -404,17 +430,23 @@ export default function CompaniesPage() {
                   <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Actions
                   </th>
+
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-800">
+
                 {filteredCompanies.map((company) => (
+
                   <tr
                     key={company.id}
                     className="transition hover:bg-slate-800/30"
                   >
+
                     <td className="px-6 py-5">
+
                       <div className="flex items-center gap-3">
+
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 font-semibold text-blue-400">
                           {company.name
                             .charAt(0)
@@ -430,7 +462,9 @@ export default function CompaniesPage() {
                             Company account
                           </p>
                         </div>
+
                       </div>
+
                     </td>
 
                     <td className="px-6 py-5 text-sm text-slate-400">
@@ -438,7 +472,9 @@ export default function CompaniesPage() {
                     </td>
 
                     <td className="px-6 py-5">
+
                       <div className="flex justify-end gap-2">
+
                         <button
                           type="button"
                           onClick={() =>
@@ -458,21 +494,35 @@ export default function CompaniesPage() {
                         >
                           Delete
                         </button>
+
                       </div>
+
                     </td>
+
                   </tr>
+
                 ))}
+
               </tbody>
+
             </table>
+
           </div>
+
         )}
+
       </section>
 
       {/* Create / Edit Modal */}
+
       {showModal && (
+
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+
           <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+
             <div className="border-b border-slate-800 p-6">
+
               <h2 className="text-xl font-semibold text-white">
                 {editingCompany
                   ? "Edit Company"
@@ -484,12 +534,14 @@ export default function CompaniesPage() {
                   ? "Update the company information."
                   : "Create a new company account."}
               </p>
+
             </div>
 
             <form
               onSubmit={handleSubmit}
               className="space-y-5 p-6"
             >
+
               {error && (
                 <div className="rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
                   {error}
@@ -497,6 +549,7 @@ export default function CompaniesPage() {
               )}
 
               <div>
+
                 <label
                   htmlFor="company-name"
                   className="mb-2 block text-sm font-medium text-slate-300"
@@ -519,9 +572,11 @@ export default function CompaniesPage() {
                   placeholder="Enter company name"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
+
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
+
                 <button
                   type="button"
                   onClick={closeModal}
@@ -542,16 +597,29 @@ export default function CompaniesPage() {
                       ? "Save Changes"
                       : "Create Company"}
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }
 
-function extractApiError(data: unknown): string | null {
+// ============================================================
+// API ERROR HANDLER
+// ============================================================
+
+function extractApiError(
+  data: unknown
+): string | null {
+
   if (!data || typeof data !== "object") {
     return null;
   }
@@ -563,11 +631,15 @@ function extractApiError(data: unknown): string | null {
   }
 
   for (const value of Object.values(object)) {
+
     if (typeof value === "string") {
       return value;
     }
 
-    if (Array.isArray(value) && typeof value[0] === "string") {
+    if (
+      Array.isArray(value) &&
+      typeof value[0] === "string"
+    ) {
       return value[0];
     }
   }
