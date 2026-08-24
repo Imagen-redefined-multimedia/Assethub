@@ -183,7 +183,7 @@ function getNavigation(
           icon: "◈",
         },
         {
-          label: "Maintenance",
+          label: "Inspections",
           href: "/maintenance",
           icon: "🔧",
         },
