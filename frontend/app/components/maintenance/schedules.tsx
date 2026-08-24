@@ -472,7 +472,7 @@ export default function MaintenancePage() {
 
           <div className="overflow-x-auto">
 
-            <table className="w-full min-w-[1100px]">
+            <table className="w-full min-w-275">
 
               <thead>
                 <tr className="border-b border-slate-800 text-left">
@@ -615,7 +615,7 @@ export default function MaintenancePage() {
 
       {/* Create Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
 
           <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
 
@@ -772,7 +772,7 @@ export default function MaintenancePage() {
 
       {/* Detail Modal */}
       {selectedMaintenance && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
 
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
 

@@ -414,7 +414,7 @@ export default function CompaniesPage() {
 
           <div className="overflow-x-auto">
 
-            <table className="w-full min-w-[650px]">
+            <table className="w-full min-w-165.5">
 
               <thead>
                 <tr className="border-b border-slate-800 text-left">
@@ -517,7 +517,7 @@ export default function CompaniesPage() {
 
       {showModal && (
 
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
 
           <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
 

@@ -10,7 +10,19 @@ import {
   MaintenanceReport,
 } from "./maintenance-api";
 
-export default function MaintenanceTable() {
+interface MaintenanceTableProps {
+  search: string;
+  status: string;
+  priority: string;
+}
+
+
+
+export default function MaintenanceTable({
+  search,
+  status,
+  priority,
+}: MaintenanceTableProps) {
   const [reports, setReports] = useState<MaintenanceReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
