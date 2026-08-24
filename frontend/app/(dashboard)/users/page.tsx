@@ -1,8 +1,5 @@
-export default function UsersPage() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-white">
-      <h1 className="text-4xl font-bold">Users</h1>
-     
-    </div>
-  );
+import UsersPage from "@/app/components/users/Users";
+
+export default function Users() {
+  return <UsersPage />;
 }
