@@ -183,19 +183,25 @@ function getNavigation(
           icon: "◈",
         },
         {
-          label: "Inspections",
+          label: "Maintenance",
           href: "/maintenance",
           icon: "🔧",
+        },
+        {
+          label: "Inspections",
+          href: "/schedules",
+          icon: "🔧",
+        },
+        
+        {
+          label: "Reports",
+          href: "/reports",
+          icon: "▥",
         },
         {
           label: "Work Orders",
           href: "/work-orders",
           icon: "▤",
-        },
-        {
-          label: "Reports",
-          href: "/reports",
-          icon: "▥",
         },
         {
           label: "Rejected Reports",
