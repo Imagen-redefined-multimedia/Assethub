@@ -1,31 +1,31 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import Navbar from "../components/navbar/Navbar";
-import Sidebar from "../components/navbar/Sidebar";
+import { ReactNode, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import Sidebar from "@/app/components/navbar/Sidebar";
+import Navbar from "@/app/components/navbar/Navbar";
 
 type User = {
-  id: number;
   username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
   role: "ADMIN" | "TECHNICIAN" | "CLIENT";
-  is_active: boolean;
   company?: number | null;
   company_name?: string | null;
 };
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+  const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,25 +34,22 @@ export default function DashboardLayout({
       const token = localStorage.getItem("access_token");
 
       if (!token) {
-        window.location.href = "/login";
+        router.replace("/login");
         return;
       }
 
       try {
-        const response = await fetch(
-          `${API_URL}/api/auth/me/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await fetch(`${API_URL}/api/auth/me/`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (!response.ok) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
 
-          window.location.href = "/login";
+          router.replace("/login");
           return;
         }
 
@@ -60,23 +57,20 @@ export default function DashboardLayout({
 
         setUser(data);
       } catch {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-
-        window.location.href = "/login";
+        router.replace("/login");
       } finally {
         setLoading(false);
       }
     }
 
     loadUser();
-  }, []);
+  }, [router]);
 
   function handleLogout() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
 
-    window.location.href = "/login";
+    router.replace("/login");
   }
 
   if (loading) {
@@ -92,12 +86,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
-
-      <Sidebar
-        user={user}
-        onLogout={handleLogout}
-      />
+    <div className="min-h-screen bg-slate-950 text-white">
+      <Sidebar user={user} onLogout={handleLogout} />
 
       <div className="ml-72 min-h-screen">
         <Navbar />
@@ -106,7 +96,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
-
     </div>
   );
 }
+

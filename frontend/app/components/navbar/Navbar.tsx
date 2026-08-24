@@ -1,16 +1,6 @@
-
 "use client";
 
 import { usePathname } from "next/navigation";
-
-type User = {
-  username: string;
-  first_name?: string;
-  last_name?: string;
-  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
-  company?: number | null;
-  company_name?: string | null;
-};
 
 const pageNames: Record<string, string> = {
   "/home": "Dashboard",
@@ -22,9 +12,11 @@ const pageNames: Record<string, string> = {
   "/reports": "Reports",
   "/qr-scanner": "QR Scanner",
   "/profile": "Profile & Settings",
+  "/schedules": "Maintenance Schedules",
+  "/rejected-reports": "Rejected Reports",
 };
 
-export default function Topbar() {
+export default function Navbar() {
   const pathname = usePathname();
 
   const pageName =
@@ -35,7 +27,6 @@ export default function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 flex h-20 items-center border-b border-slate-800 bg-slate-950/95 px-8 backdrop-blur">
-
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-slate-600">
           AssetHub
@@ -45,7 +36,6 @@ export default function Topbar() {
           {pageName}
         </h2>
       </div>
-
     </header>
   );
 }

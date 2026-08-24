@@ -197,6 +197,11 @@ function getNavigation(
           href: "/reports",
           icon: "▥",
         },
+        {
+          label: "Rejected Reports",
+          href: "/rejected-reports",
+          icon: "⚠",
+        },
       ];
 
     case "TECHNICIAN":
