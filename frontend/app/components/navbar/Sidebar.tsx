@@ -100,8 +100,8 @@ export default function Sidebar({
           {navigation.map((item) => {
 
             const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
+              item.href === "/home"
+                ? pathname === "/home"
                 : pathname.startsWith(item.href);
 
             return (
@@ -165,7 +165,7 @@ function getNavigation(
       return [
         {
           label: "Dashboard",
-          href: "/dashboard",
+          href: "/home",
           icon: "⌂",
         },
         {
@@ -233,7 +233,7 @@ function getNavigation(
       return [
         {
           label: "Dashboard",
-          href: "/dashboard",
+          href: "/home",
           icon: "⌂",
         },
         {
