@@ -189,7 +189,7 @@ function getNavigation(
         },
         {
           label: "Inspections",
-          href: "/maintenance/schedules",
+          href: "",
           icon: "🔧",
         },
         
@@ -213,9 +213,9 @@ function getNavigation(
     case "TECHNICIAN":
       return [
 
-        {
+       {
           label: "QR Scanner",
-          href: "/qr-scanner",
+          href: "/assets/qr-scanner",
           icon: "▦",
         },
         
