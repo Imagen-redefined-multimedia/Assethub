@@ -1,5 +1,17 @@
 import { apiFetch, apiJson } from "@/lib/api";
 
+// ============================================================
+// MAINTENANCE REPORT
+// ============================================================
+
+export interface MaintenanceReportPhoto {
+  id: number;
+  report_id: number;
+  image: string;
+  photo_type: "ISSUE" | "FIXED";
+  uploaded_at: string;
+}
+
 export interface MaintenanceReport {
   id: number;
 
@@ -23,7 +35,7 @@ export interface MaintenanceReport {
   parts_replaced: string;
 
   // Photos
-  photos: string[];
+  photos: MaintenanceReportPhoto[];
 
   // Maintenance classification
   priority: string;
@@ -46,7 +58,13 @@ interface MaintenanceReportResponse {
   previous?: string | null;
 }
 
-export async function getMaintenanceReports(): Promise<MaintenanceReport[]> {
+// ============================================================
+// GET ALL REPORTS
+// ============================================================
+
+export async function getMaintenanceReports(): Promise<
+  MaintenanceReport[]
+> {
   const data = await apiJson<
     MaintenanceReport[] | MaintenanceReportResponse
   >("/api/maintenance-reports/");
@@ -58,6 +76,10 @@ export async function getMaintenanceReports(): Promise<MaintenanceReport[]> {
   return data.results ?? [];
 }
 
+// ============================================================
+// GET SINGLE REPORT
+// ============================================================
+
 export async function getMaintenanceReport(
   id: number
 ): Promise<MaintenanceReport> {
@@ -66,32 +88,96 @@ export async function getMaintenanceReport(
   );
 }
 
-export async function reviewMaintenanceReport( 
-   id: number, 
-   action: "ACCEPT" | "REJECT", 
-   comment: string 
-  ): Promise<MaintenanceReport> { 
-    
-    const response = await apiFetch( `/api/maintenance-reports/${id}/review/`,
-       { 
-        method: "POST", 
-        body: JSON.stringify({
-           action,
-           comment, 
-          }
-      ), 
-   }
-   ); 
-   
-   
-     const data = await response.json().catch(() => null); 
-     
-     if (!response.ok) 
-      { throw new Error( 
-          data?.detail || 
-          data?.error || 
-          "Unable to review maintenance report." 
-        ); 
-      } 
-      return data; 
+// ============================================================
+// CREATE REPORT
+// ============================================================
+
+export interface CreateMaintenanceReportData {
+  maintenance: number;
+  summary: string;
+  findings: string;
+  work_performed: string;
+  parts_replaced: string;
+  priority: string;
+  status?: string;
+}
+
+export async function createMaintenanceReport(
+  data: CreateMaintenanceReportData
+): Promise<MaintenanceReport> {
+  return apiJson<MaintenanceReport>(
+    "/api/maintenance-reports/",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
     }
+  );
+}
+
+// ============================================================
+// UPLOAD REPORT PHOTO
+// ============================================================
+
+export async function uploadMaintenanceReportPhoto(
+  reportId: number,
+  image: File,
+  photoType: "ISSUE" | "FIXED"
+): Promise<MaintenanceReportPhoto> {
+  const formData = new FormData();
+
+  formData.append("image", image);
+  formData.append("photo_type", photoType);
+
+  const response = await apiFetch(
+    `/api/maintenance-reports/${reportId}/photos/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.detail ||
+        data?.error ||
+        "Unable to upload maintenance report photo."
+    );
+  }
+
+  return data.photo;
+}
+
+// ============================================================
+// REVIEW REPORT
+// ============================================================
+
+export async function reviewMaintenanceReport(
+  id: number,
+  action: "ACCEPT" | "REJECT",
+  comment: string
+): Promise<MaintenanceReport> {
+  const response = await apiFetch(
+    `/api/maintenance-reports/${id}/review/`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action,
+        comment,
+      }),
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.detail ||
+        data?.error ||
+        "Unable to review maintenance report."
+    );
+  }
+
+  return data;
+}

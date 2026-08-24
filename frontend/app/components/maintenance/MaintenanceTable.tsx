@@ -209,7 +209,7 @@ export default function MaintenanceTable({
 
                   <td className="px-6 py-5 text-right">
                     <Link
-                      href={`/maintenance/${report.id}`}
+                      href={`/maintenance/report/${report.id}`}
                       className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
                     >
                       View

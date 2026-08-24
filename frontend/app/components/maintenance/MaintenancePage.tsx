@@ -22,7 +22,7 @@ export default function MaintenancePage() {
         </h1>
 
         <p className="mt-2 text-slate-400">
-          Review maintenance reports and monitor asset maintenance activity.
+          View assigned maintenance tasks, monitor progress, and manage asset maintenance activity.
         </p>
       </div>
 

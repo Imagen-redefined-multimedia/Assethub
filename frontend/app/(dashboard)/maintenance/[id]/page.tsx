@@ -1,5 +1,6 @@
-import IDMaintenance from "@/app/components/maintenance/detailOnMaintenance";
+import MaintenanceTask from "@/app/components/maintenance/MaintenanceTask";
+
 
 export default function DetailPage(){
-    return <IDMaintenance  />;
+    return <MaintenanceTask  />;
 }

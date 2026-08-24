@@ -5,17 +5,38 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiJson } from "@/lib/api";
 
+type Maintenance = {
+  id: number;
+  status: string;
+  description: string;
+  technician: number;
+  technician_username: string;
+  work_order: number;
+  work_order_title: string;
+  work_order_description: string;
+  work_order_status: string;
+  client_id: number;
+  client_username: string;
+  company_id: number | null;
+  company_name: string | null;
+};
+
 type Asset = {
   id: number;
   name: string;
   serial_number: string;
   description?: string;
-  company?: number | null;
-  company_name?: string;
   client?: number;
   client_username?: string;
   qr_active: boolean;
   last_qr_scan_at?: string | null;
+  company_name: string | null;
+};
+
+type QRScanResponse = {
+  message: string;
+  asset: Asset;
+  maintenance: Maintenance | null;
 };
 
 export default function AssetQRScannerPage() {
@@ -28,6 +49,9 @@ export default function AssetQRScannerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [maintenance, setMaintenance] =
+  useState<Maintenance | null>(null);
+
   useEffect(() => {
     if (!token) return;
 
@@ -36,14 +60,15 @@ export default function AssetQRScannerPage() {
         setLoading(true);
         setError("");
 
-        const data = await apiJson<Asset>(
+        const data = await apiJson<QRScanResponse>(
           `/api/qr/scan/${encodeURIComponent(token)}/`,
           {
             method: "POST",
           }
         );
 
-        setAsset(data);
+        setAsset(data.asset);
+        setMaintenance(data.maintenance);
       } catch (err) {
         setError(
           err instanceof Error
@@ -59,12 +84,15 @@ export default function AssetQRScannerPage() {
   }, [token]);
 
   function startInspection() {
-    if (!asset) return;
-
-    router.push(
-      `/maintenance/create?asset=${asset.id}`
+  if (!maintenance) {
+    setError(
+      "There is no active maintenance task assigned to you for this asset."
     );
+    return;
   }
+
+  router.push(`/maintenance/${maintenance.id}`);
+}
 
   if (loading) {
     return (
