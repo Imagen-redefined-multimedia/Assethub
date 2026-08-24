@@ -189,7 +189,7 @@ function getNavigation(
         },
         {
           label: "Inspections",
-          href: "/schedules",
+          href: "/maintenance/schedules",
           icon: "🔧",
         },
         
