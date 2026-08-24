@@ -42,8 +42,7 @@ export default function Sidebar({
 
       {/* Brand */}
       <div className="flex h-20 items-center border-b border-slate-800 px-6">
-        <Link
-          href="/dashboard"
+        <div
           className="flex items-center gap-3"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-lg shadow-blue-600/20">
@@ -59,7 +58,7 @@ export default function Sidebar({
               Asset Management
             </p>
           </div>
-        </Link>
+        </div>
       </div>
 
       {/* User */}
@@ -202,26 +201,26 @@ function getNavigation(
 
     case "TECHNICIAN":
       return [
-        {
-          label: "Dashboard",
-          href: "/dashboard",
-          icon: "⌂",
-        },
-        {
-          label: "Maintenance",
-          href: "/maintenance",
-          icon: "🔧",
-        },
-        {
-          label: "Work Orders",
-          href: "/work-orders",
-          icon: "▤",
-        },
+
         {
           label: "QR Scanner",
           href: "/qr-scanner",
           icon: "▦",
         },
+        
+        {
+          label: "Work Orders",
+          href: "/work-orders",
+          icon: "▤",
+        },
+
+        {
+          label: "Inspections",
+          href: "/maintenance",
+          icon: "🔧",
+        },
+        
+        
         {
           label: "Reports",
           href: "/reports",
