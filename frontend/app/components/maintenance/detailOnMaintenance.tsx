@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +6,7 @@ import Link from "next/link";
 
 import MaintenancePriorityBadge from "@/app/components/maintenance/MaintenancePriorityBadge";
 import MaintenanceStatusBadge from "@/app/components/maintenance/MaintenanceStatusBadge";
+
 import {
   getMaintenanceReport,
   MaintenanceReport,
@@ -52,33 +52,33 @@ export default function IDMaintenance() {
     loadReport();
   }, [id]);
 
+  /* Loading */
   if (loading) {
     return (
-      <div className="flex min-h-100 items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">
-          Loading maintenance report...
-        </p>
+      <div className="flex min-h-60 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
       </div>
     );
   }
 
+  /* Error */
   if (error || !report) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-5">
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-sm font-medium hover:underline"
+          className="text-sm font-medium text-slate-400 transition hover:text-white"
         >
           ← Back
         </button>
 
-        <div className="rounded-lg border  p-6">
-          <h1 className="font-semibold text-red-600">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h1 className="font-semibold text-red-400">
             Unable to load report
           </h1>
 
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-slate-500">
             {error ?? "Maintenance report not found."}
           </p>
         </div>
@@ -87,27 +87,28 @@ export default function IDMaintenance() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <Link
             href="/maintenance"
-            className="text-sm text-muted-foreground hover:underline"
+            className="text-sm text-slate-500 transition hover:text-blue-400"
           >
             ← Maintenance
           </Link>
 
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-2 text-3xl font-bold text-white">
             Maintenance Report
           </h1>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Report #{report.id} · {report.asset_name}
+          <p className="mt-2 text-sm text-slate-500">
+            Report #{report.id} ·{" "}
+            {report.asset_name || `Asset #${report.asset_id}`}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <MaintenancePriorityBadge
             priority={report.priority}
           />
@@ -119,168 +120,176 @@ export default function IDMaintenance() {
       </div>
 
       {/* Asset / Technician */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <section className="rounded-lg border  p-6">
-          <h2 className="font-semibold">Asset</h2>
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Asset */}
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="font-semibold text-white">
+            Asset
+          </h2>
 
-          <div className="mt-4 space-y-3">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Asset
-              </p>
+          <div className="mt-5 space-y-4">
+            <InfoItem
+              label="Asset"
+              value={
+                report.asset_name ||
+                `Asset #${report.asset_id}`
+              }
+            />
 
-              <p className="font-medium">
-                {report.asset_name}
-              </p>
-            </div>
+            <InfoItem
+              label="Asset ID"
+              value={`#${report.asset_id}`}
+            />
 
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Asset ID
-              </p>
-
-              <p className="font-medium">
-                #{report.asset_id}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Client ID
-              </p>
-
-              <p className="font-medium">
-                #{report.client_id}
-              </p>
-            </div>
+            <InfoItem
+              label="Client ID"
+              value={`#${report.client_id}`}
+            />
           </div>
         </section>
 
-        <section className="rounded-lg border  p-6">
-          <h2 className="font-semibold">Technician</h2>
+        {/* Technician */}
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="font-semibold text-white">
+            Technician
+          </h2>
 
-          <div className="mt-4 space-y-3">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Technician
-              </p>
+          <div className="mt-5 space-y-4">
+            <InfoItem
+              label="Technician"
+              value={
+                report.technician_username ||
+                "Unknown technician"
+              }
+            />
 
-              <p className="font-medium">
-                {report.technician_username}
-              </p>
-            </div>
+            <InfoItem
+              label="Report date"
+              value={new Date(
+                report.created_at
+              ).toLocaleString()}
+            />
 
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Report date
-              </p>
-
-              <p className="font-medium">
-                {new Date(
-                  report.created_at
+            {report.updated_at && (
+              <InfoItem
+                label="Last updated"
+                value={new Date(
+                  report.updated_at
                 ).toLocaleString()}
-              </p>
-            </div>
+              />
+            )}
           </div>
         </section>
       </div>
 
       {/* Summary */}
-      <section className="rounded-lg border  p-6">
-        <h2 className="font-semibold">Summary</h2>
-
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+      <DetailCard title="Summary">
+        <p className="text-sm leading-7 text-slate-400">
           {report.summary || "No summary provided."}
         </p>
-      </section>
+      </DetailCard>
 
       {/* Findings */}
-      <section className="rounded-lg border  p-6">
-        <h2 className="font-semibold">Findings</h2>
-
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+      <DetailCard title="Findings">
+        <p className="whitespace-pre-wrap text-sm leading-7 text-slate-400">
           {report.findings || "No findings recorded."}
         </p>
-      </section>
+      </DetailCard>
 
-      {/* Work performed / Parts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <section className="rounded-lg border  p-6">
-          <h2 className="font-semibold">Work Performed</h2>
-
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-            {report.work_performed || "No work recorded."}
+      {/* Work / Parts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <DetailCard title="Work Performed">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-slate-400">
+            {report.work_performed ||
+              "No work recorded."}
           </p>
-        </section>
+        </DetailCard>
 
-        <section className="rounded-lg border  p-6">
-          <h2 className="font-semibold">Parts Replaced</h2>
-
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-            {report.parts_replaced || "No parts replaced."}
+        <DetailCard title="Parts Replaced">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-slate-400">
+            {report.parts_replaced ||
+              "No parts replaced."}
           </p>
-        </section>
+        </DetailCard>
       </div>
 
       {/* Photos */}
-      <section className="rounded-lg border  p-6">
-        <h2 className="font-semibold">Photos</h2>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div>
+          <h2 className="font-semibold text-white">
+            Photos
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Photos attached to this maintenance report.
+          </p>
+        </div>
 
         {report.photos?.length > 0 ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {report.photos.map((photo, index) => (
               <a
                 key={photo}
                 href={photo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="overflow-hidden rounded-lg border"
+                className="group overflow-hidden rounded-xl border border-slate-800 bg-slate-950 transition hover:border-blue-500/60"
               >
                 <img
                   src={photo}
                   alt={`Maintenance photo ${index + 1}`}
-                  className="h-56 w-full object-cover"
+                  className="h-56 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                 />
+
+                <div className="border-t border-slate-800 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Photo {index + 1}
+                  </p>
+                </div>
               </a>
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No photos were attached to this report.
-          </p>
+          <div className="mt-5 rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-8 text-center">
+            <p className="text-sm text-slate-500">
+              No photos were attached to this report.
+            </p>
+          </div>
         )}
       </section>
 
       {/* Review */}
-      <section className="rounded-lg border  p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="font-semibold">Review</h2>
+            <h2 className="font-semibold text-white">
+              Review
+            </h2>
 
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-slate-500">
               Client review information.
             </p>
           </div>
 
-          <span className="rounded-full border px-3 py-1 text-sm font-medium">
-            {report.review_status}
-          </span>
+          <ReviewBadge
+            status={report.review_status}
+          />
         </div>
 
         {report.review_comment && (
-          <div className="mt-4 rounded-md bg-gray-50 p-4">
-            <p className="text-xs font-medium text-muted-foreground">
+          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Review comment
             </p>
 
-            <p className="mt-1 text-sm">
+            <p className="mt-2 text-sm leading-6 text-slate-300">
               {report.review_comment}
             </p>
           </div>
         )}
 
         {report.reviewed_at && (
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-xs text-slate-500">
             Reviewed on{" "}
             {new Date(
               report.reviewed_at
@@ -293,11 +302,87 @@ export default function IDMaintenance() {
       <div className="flex justify-between">
         <Link
           href="/maintenance"
-          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+          className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
         >
-          Back to Maintenance
+          ← Back to Maintenance
         </Link>
       </div>
     </div>
+  );
+}
+
+/* ============================================================
+   REUSABLE INFO ITEM
+============================================================ */
+
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-1 font-medium text-slate-200">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================
+   REUSABLE DETAIL CARD
+============================================================ */
+
+function DetailCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="font-semibold text-white">
+        {title}
+      </h2>
+
+      <div className="mt-4">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   REVIEW BADGE
+============================================================ */
+
+function ReviewBadge({
+  status,
+}: {
+  status?: string;
+}) {
+  const normalizedStatus =
+    status?.toUpperCase() || "PENDING";
+
+  const styles =
+    normalizedStatus === "ACCEPTED"
+      ? "border-emerald-900/60 bg-emerald-950/30 text-emerald-400"
+      : normalizedStatus === "REJECTED"
+        ? "border-red-900/60 bg-red-950/30 text-red-400"
+        : "border-amber-900/60 bg-amber-950/30 text-amber-400";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${styles}`}
+    >
+      {normalizedStatus}
+    </span>
   );
 }
