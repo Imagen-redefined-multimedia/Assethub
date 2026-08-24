@@ -5,11 +5,12 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.utils import timezone
 
-from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import generics, status
+from rest_framework.response import Response
 
 import qrcode
 
@@ -32,6 +33,7 @@ from .permissions import (
 )
 
 from .serializers import (
+    ChangePasswordSerializer,
     CompanySerializer,
     MaintenanceReassignSerializer,
     MaintenanceReportPhotoUploadSerializer,
@@ -1316,4 +1318,27 @@ class MaintenanceReportPhotoUploadView(
                 },
             },
             status=201,
+        )
+
+
+class ChangePasswordView(generics.GenericAPIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    serializer_class = ChangePasswordSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {
+                "detail": "Password changed successfully."
+            },
+            status=status.HTTP_200_OK
         )

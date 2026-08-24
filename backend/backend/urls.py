@@ -20,6 +20,7 @@ from drf_spectacular.views import (
 )
 
 from api.views import (
+    ChangePasswordView,
     CompanyDetailView,
     CompanyListCreateView,
     MaintenanceReportPhotoUploadView,
@@ -286,6 +287,15 @@ path(
     ),
     name="redoc",
 ),
+
+path(
+    "auth/change-password/",
+    ChangePasswordView.as_view(),
+    name="change-password",
+),
+
+
+
 ]
 
 urlpatterns += static(
