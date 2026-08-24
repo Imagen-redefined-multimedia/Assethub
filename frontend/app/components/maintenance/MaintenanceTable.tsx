@@ -119,7 +119,7 @@ export default function MaintenanceTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-225">
             <thead>
               <tr className="border-b border-slate-800 text-left">
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">

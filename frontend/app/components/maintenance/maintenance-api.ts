@@ -1,4 +1,4 @@
-import { apiJson } from "@/lib/api";
+import { apiFetch, apiJson } from "@/lib/api";
 
 export interface MaintenanceReport {
   id: number;
@@ -65,3 +65,33 @@ export async function getMaintenanceReport(
     `/api/maintenance-reports/${id}/`
   );
 }
+
+export async function reviewMaintenanceReport( 
+   id: number, 
+   action: "ACCEPT" | "REJECT", 
+   comment: string 
+  ): Promise<MaintenanceReport> { 
+    
+    const response = await apiFetch( `/api/maintenance-reports/${id}/review/`,
+       { 
+        method: "POST", 
+        body: JSON.stringify({
+           action,
+           comment, 
+          }
+      ), 
+   }
+   ); 
+   
+   
+     const data = await response.json().catch(() => null); 
+     
+     if (!response.ok) 
+      { throw new Error( 
+          data?.detail || 
+          data?.error || 
+          "Unable to review maintenance report." 
+        ); 
+      } 
+      return data; 
+    }

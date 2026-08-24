@@ -9,7 +9,9 @@ import MaintenanceStatusBadge from "@/app/components/maintenance/MaintenanceStat
 
 import {
   getMaintenanceReport,
+  reviewMaintenanceReport,
   MaintenanceReport,
+  
 } from "@/app/components/maintenance/maintenance-api";
 
 export default function IDMaintenance() {
@@ -21,6 +23,12 @@ export default function IDMaintenance() {
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [reviewComment, setReviewComment] = useState(""); 
+  const [reviewing, setReviewing] = useState(false); 
+  const [reviewError, setReviewError] = useState<string | null>(null); 
+  const [reviewSuccess, setReviewSuccess] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!id || Number.isNaN(id)) {
@@ -86,6 +94,41 @@ export default function IDMaintenance() {
     );
   }
 
+  async function handleReview(action: "ACCEPT" | "REJECT") {
+  if (action === "REJECT" && !reviewComment.trim()) {
+    setReviewError("Please provide a reason for rejecting this report.");
+    return;
+  }
+
+  try {
+    setReviewing(true);
+    setReviewError(null);
+    setReviewSuccess(null);
+
+    const updatedReport = await reviewMaintenanceReport(
+      id,
+      action,
+      reviewComment.trim()
+    );
+
+    setReport(updatedReport);
+    setReviewComment("");
+
+    setReviewSuccess(
+      action === "ACCEPT"
+        ? "Maintenance report accepted successfully."
+        : "Maintenance report rejected successfully."
+    );
+  } catch (err) {
+    setReviewError(
+      err instanceof Error
+        ? err.message
+        : "Unable to review maintenance report."
+    );
+  } finally {
+    setReviewing(false);
+  }
+}
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -260,26 +303,90 @@ export default function IDMaintenance() {
 
       {/* Review */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-white">
-              Review
+              Client Review
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Client review information.
+              Review the maintenance work submitted by the technician.
             </p>
           </div>
 
-          <ReviewBadge
-            status={report.review_status}
-          />
+          <span
+            className={`rounded-full border px-3 py-1 text-sm font-medium ${
+              report.review_status === "ACCEPTED"
+                ? "border-emerald-900 bg-emerald-950/30 text-emerald-400"
+                : report.review_status === "REJECTED"
+                  ? "border-red-900 bg-red-950/30 text-red-400"
+                  : "border-amber-900 bg-amber-950/30 text-amber-400"
+            }`}
+          >
+            {report.review_status || "PENDING"}
+          </span>
         </div>
 
+        {reviewSuccess && (
+          <div className="mt-5 rounded-xl border border-emerald-900 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
+            {reviewSuccess}
+          </div>
+        )}
+
+        {reviewError && (
+          <div className="mt-5 rounded-xl border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+            {reviewError}
+          </div>
+        )}
+
+        {report.review_status === "PENDING" && (
+          <div className="mt-6 space-y-4">
+            <div>
+              <label
+                htmlFor="review-comment"
+                className="mb-2 block text-sm font-medium text-slate-300"
+              >
+                Review Comment
+              </label>
+
+              <textarea
+                id="review-comment"
+                value={reviewComment}
+                onChange={(event) =>
+                  setReviewComment(event.target.value)
+                }
+                placeholder="Add a comment about this maintenance report..."
+                rows={4}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={reviewing}
+                onClick={() => handleReview("REJECT")}
+                className="rounded-xl border border-red-900/60 px-5 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {reviewing ? "Processing..." : "Reject Report"}
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewing}
+                onClick={() => handleReview("ACCEPT")}
+                className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {reviewing ? "Processing..." : "Accept Report"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {report.review_comment && (
-          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950 p-4">
+          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Review comment
+              Review Comment
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -291,9 +398,7 @@ export default function IDMaintenance() {
         {report.reviewed_at && (
           <p className="mt-4 text-xs text-slate-500">
             Reviewed on{" "}
-            {new Date(
-              report.reviewed_at
-            ).toLocaleString()}
+            {new Date(report.reviewed_at).toLocaleString()}
           </p>
         )}
       </section>
