@@ -1,4 +1,3 @@
-
 "use client";
 
 interface MaintenanceFiltersProps {
@@ -19,33 +18,31 @@ export default function MaintenanceFilters({
   onPriorityChange,
 }: MaintenanceFiltersProps) {
   return (
-    <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 md:flex-row">
-      {/* Search */}
+    <div className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:flex-row">
       <input
         type="search"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder="Search maintenance reports..."
-        className="h-11 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500"
+        className="h-10 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
       />
 
-      {/* Status */}
       <select
         value={status}
         onChange={(event) => onStatusChange(event.target.value)}
-        className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-slate-300 outline-none transition focus:border-blue-500"
+        className="h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
       >
         <option value="ALL">All statuses</option>
         <option value="PENDING">Pending</option>
-        <option value="IN_PROGRESS">In Progress</option>
+        <option value="APPROVED">Approved</option>
+        <option value="REJECTED">Rejected</option>
         <option value="COMPLETED">Completed</option>
       </select>
 
-      {/* Priority */}
       <select
         value={priority}
         onChange={(event) => onPriorityChange(event.target.value)}
-        className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-slate-300 outline-none transition focus:border-blue-500"
+        className="h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
       >
         <option value="ALL">All priorities</option>
         <option value="LOW">Low</option>
@@ -56,4 +53,3 @@ export default function MaintenanceFilters({
     </div>
   );
 }
-

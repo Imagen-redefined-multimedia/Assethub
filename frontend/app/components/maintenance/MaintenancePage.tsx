@@ -12,7 +12,6 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div>
         <p className="text-sm font-medium text-blue-400">
           MAINTENANCE
@@ -27,7 +26,6 @@ export default function MaintenancePage() {
         </p>
       </div>
 
-      {/* Filters */}
       <MaintenanceFilters
         search={search}
         status={status}
@@ -37,7 +35,6 @@ export default function MaintenancePage() {
         onPriorityChange={setPriority}
       />
 
-      {/* Reports */}
       <MaintenanceTable
         search={search}
         status={status}
