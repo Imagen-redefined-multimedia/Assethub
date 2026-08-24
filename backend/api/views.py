@@ -379,10 +379,29 @@ class QRScanView(APIView):
             ]
         )
 
+        maintenance = (
+            Maintenance.objects
+            .select_related(
+                "technician",
+                "work_order",
+                "work_order__client",
+                "work_order__client__company",
+                "work_order__asset",
+            )
+            .filter(
+                work_order__asset=asset,
+                technician=request.user,
+            )
+            .exclude(
+                status=Maintenance.Status.COMPLETED
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
         return Response(
             {
                 "message": "QR code scanned successfully.",
-
                 "asset": {
                     "id": asset.id,
                     "name": asset.name,
@@ -391,6 +410,45 @@ class QRScanView(APIView):
                     "client": asset.client.id,
                     "client_username": asset.client.username,
                 },
+                "maintenance": (
+                    {
+                        "id": maintenance.id,
+                        "status": maintenance.status,
+                        "description": maintenance.description,
+                        "technician": maintenance.technician.id,
+                        "technician_username": (
+                            maintenance.technician.username
+                        ),
+                        "work_order": maintenance.work_order.id,
+                        "work_order_title": (
+                            maintenance.work_order.title
+                        ),
+                        "work_order_description": (
+                            maintenance.work_order.description
+                        ),
+                        "work_order_status": (
+                            maintenance.work_order.status
+                        ),
+                        "client_id": (
+                            maintenance.work_order.client.id
+                        ),
+                        "client_username": (
+                            maintenance.work_order.client.username
+                        ),
+                        "company_id": (
+                            maintenance.work_order.client.company.id
+                            if maintenance.work_order.client.company
+                            else None
+                        ),
+                        "company_name": (
+                            maintenance.work_order.client.company.name
+                            if maintenance.work_order.client.company
+                            else None
+                        ),
+                    }
+                    if maintenance
+                    else None
+                ),
             },
             status=200,
         )
