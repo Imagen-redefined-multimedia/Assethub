@@ -135,7 +135,7 @@ export default function MaintenanceTable() {
 
                   <td className="px-6 py-4 text-muted-foreground">
                     {report.technician_username ||
-                      `Technician #${report.technician}`}
+                      `Technician #${report.technician_username}`}
                   </td>
 
                   <td className="px-6 py-4">
