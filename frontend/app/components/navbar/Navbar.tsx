@@ -3,6 +3,15 @@
 
 import { usePathname } from "next/navigation";
 
+type User = {
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
+  company?: number | null;
+  company_name?: string | null;
+};
+
 const pageNames: Record<string, string> = {
   "/home": "Dashboard",
   "/companies": "Companies",
