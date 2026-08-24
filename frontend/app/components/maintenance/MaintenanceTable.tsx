@@ -41,13 +41,14 @@ export default function MaintenanceTable() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-lg  border-slate-800 bg-slate-900 text-foreground shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm">
       {/* Header */}
-      <div className="border-b px-6 py-4">
-        <h2 className="font-semibold">
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="font-semibold text-card-foreground">
           Maintenance Reports
         </h2>
-        <p className="text-sm text-muted-foreground">
+
+        <p className="mt-1 text-sm text-muted-foreground">
           Review maintenance activity across your assets.
         </p>
       </div>
@@ -76,7 +77,7 @@ export default function MaintenanceTable() {
         /* Empty state */
         <div className="flex min-h-64 items-center justify-center px-6 text-center">
           <div>
-            <h3 className="font-medium">
+            <h3 className="font-medium text-card-foreground">
               No maintenance reports
             </h3>
 
@@ -90,33 +91,33 @@ export default function MaintenanceTable() {
         /* Table */
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
+            <thead className="border-b border-border bg-muted/50">
               <tr>
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Asset
                 </th>
 
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Technician
                 </th>
 
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Priority
                 </th>
 
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Status
                 </th>
 
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Review
                 </th>
 
-                <th className="px-6 py-3 text-left font-medium">
+                <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                   Date
                 </th>
 
-                <th className="px-6 py-3 text-right font-medium">
+                <th className="px-6 py-3 text-right font-medium text-muted-foreground">
                   Action
                 </th>
               </tr>
@@ -128,43 +129,51 @@ export default function MaintenanceTable() {
                   key={report.id}
                   className="transition-colors hover:bg-muted/40"
                 >
-                  <td className="px-6 py-4 font-medium">
-                    {report.asset_name || `Asset #${report.asset_id}`}
+                  {/* Asset */}
+                  <td className="px-6 py-4 font-medium text-card-foreground">
+                    {report.asset_name ||
+                      `Asset #${report.asset_id}`}
                   </td>
 
+                  {/* Technician */}
                   <td className="px-6 py-4 text-muted-foreground">
                     {report.technician_username ||
-                      `Technician #${report.technician_username}`}
+                      "Unknown technician"}
                   </td>
 
+                  {/* Priority */}
                   <td className="px-6 py-4">
                     <MaintenancePriorityBadge
                       priority={report.priority}
                     />
                   </td>
 
+                  {/* Status */}
                   <td className="px-6 py-4">
                     <MaintenanceStatusBadge
                       status={report.status}
                     />
                   </td>
 
+                  {/* Review */}
                   <td className="px-6 py-4">
-                    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium">
+                    <span className="inline-flex rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                       {report.review_status || "PENDING"}
                     </span>
                   </td>
 
+                  {/* Date */}
                   <td className="px-6 py-4 text-muted-foreground">
                     {new Date(
                       report.created_at
                     ).toLocaleDateString()}
                   </td>
 
+                  {/* Action */}
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/maintenance/${report.id}`}
-                      className="font-medium text-primary hover:underline"
+                      className="font-medium text-primary transition-colors hover:opacity-80 hover:underline"
                     >
                       View
                     </Link>
