@@ -36,10 +36,15 @@ DEBUG = os.environ.get(
     "True",
 ).lower() == "true"
 
-ALLOWED_HOSTS = [ 
-        "assethub-phi.vercel.app",
-        "localhost,127.0.0.1"
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get(
+        "ALLOWED_HOSTS",
+        "localhost,127.0.0.1",
+    ).split(",")
+    if host.strip()
 ]
+
 
 
 # ============================================================
