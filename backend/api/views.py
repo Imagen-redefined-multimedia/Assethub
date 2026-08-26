@@ -1415,60 +1415,26 @@ class ChangePasswordView(generics.GenericAPIView):
 # ============================================================
 
 class WorkOrderResponseView(APIView):
-
-    serializer_class = WorkOrderResponseSerializer
-
-    permission_classes = [
-        IsAuthenticated,
-    ]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=WorkOrderResponseSerializer,
     )
     def post(self, request, pk):
-
         user = request.user
 
-        # ----------------------------------------------------
+        # =====================================================
         # CLIENT ONLY
-        # ----------------------------------------------------
+        # =====================================================
 
         if user.role != User.Role.CLIENT:
             raise PermissionDenied(
                 "Only clients can accept or reject work orders."
             )
 
-        # ----------------------------------------------------
-        # FIND WORK ORDER
-        # ----------------------------------------------------
-
-        try:
-            work_order = WorkOrder.objects.select_related(
-                "client",
-                "company",
-                "asset",
-            ).get(pk=pk)
-
-        except WorkOrder.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Work order not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # ----------------------------------------------------
-        # OWNERSHIP CHECK
-        # ----------------------------------------------------
-
-        if work_order.client != user:
-            raise PermissionDenied(
-                "You can only respond to your own work orders."
-            )
-
-        # ----------------------------------------------------
+        # =====================================================
         # VALIDATE REQUEST
-        # ----------------------------------------------------
+        # =====================================================
 
         serializer = WorkOrderResponseSerializer(
             data=request.data
@@ -1479,73 +1445,128 @@ class WorkOrderResponseView(APIView):
         )
 
         action = serializer.validated_data["action"]
-
         comment = serializer.validated_data.get(
             "comment",
-            "",
-        )
+            ""
+        ).strip()
 
-        # ----------------------------------------------------
-        # ONLY PENDING WORK ORDERS CAN BE RESPONDED TO
-        # ----------------------------------------------------
+        # =====================================================
+        # FIND WORK ORDER
+        # =====================================================
+
+        try:
+            work_order = (
+                WorkOrder.objects
+                .select_related(
+                    "client",
+                    "company",
+                    "asset",
+                )
+                .get(
+                    pk=pk,
+                    client=user,
+                )
+            )
+
+        except WorkOrder.DoesNotExist:
+            return Response(
+                {
+                    "detail": "Work order not found."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # =====================================================
+        # CHECK CLIENT RESPONSE STATUS
+        # =====================================================
 
         if (
-            work_order.status
-            != WorkOrder.Status.PENDING_CLIENT
+            work_order.client_response
+            != WorkOrder.ClientResponse.PENDING
         ):
-            raise ValidationError(
-                "This work order is no longer awaiting "
-                "a client response."
+            return Response(
+                {
+                    "detail": (
+                        "This work order has already "
+                        "received a client response."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ----------------------------------------------------
-        # ACCEPT
-        # ----------------------------------------------------
+        # =====================================================
+        # CHECK WORK ORDER STATUS
+        # =====================================================
 
-        if action == "ACCEPT":
-
-            work_order.status = (
-                WorkOrder.Status.ACCEPTED
+        if work_order.status in [
+            WorkOrder.Status.COMPLETED,
+            WorkOrder.Status.CANCELLED,
+        ]:
+            return Response(
+                {
+                    "detail": (
+                        "This work order can no longer "
+                        "receive a client response."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            message = (
-                "Work order accepted successfully."
+        # =====================================================
+        # PROCESS RESPONSE
+        # =====================================================
+
+        with transaction.atomic():
+
+            if action == "ACCEPT":
+
+                work_order.client_response = (
+                    WorkOrder.ClientResponse.ACCEPTED
+                )
+
+                # Keep the work order itself pending until
+                # the technician actually starts the work.
+                work_order.status = (
+                    WorkOrder.Status.PENDING
+                )
+
+                message = (
+                    "Work order accepted successfully."
+                )
+
+            else:
+
+                work_order.client_response = (
+                    WorkOrder.ClientResponse.REJECTED
+                )
+
+                # A rejected work order remains pending from
+                # the lifecycle perspective until admin/technician
+                # decides what to do with it.
+                work_order.status = (
+                    WorkOrder.Status.PENDING
+                )
+
+                message = (
+                    "Work order rejected successfully."
+                )
+
+            work_order.client_response_comment = comment
+            work_order.client_responded_at = timezone.now()
+
+            work_order.save(
+                update_fields=[
+                    "client_response",
+                    "status",
+                    "client_response_comment",
+                    "client_responded_at",
+                    "updated_at",
+                ]
             )
 
-        # ----------------------------------------------------
-        # REJECT
-        # ----------------------------------------------------
-
-        else:
-
-            work_order.status = (
-                WorkOrder.Status.REJECTED
-            )
-
-            message = (
-                "Work order rejected successfully."
-            )
-
-        # ----------------------------------------------------
-        # SAVE CLIENT RESPONSE
-        # ----------------------------------------------------
-
-        work_order.client_response_comment = comment
-
-        work_order.client_responded_at = timezone.now()
-
-        work_order.save(
-            update_fields=[
-                "status",
-                "client_response_comment",
-                "client_responded_at",
-                "updated_at",
-            ]
-        )
-
-        # ----------------------------------------------------
+        # =====================================================
         # RESPONSE
-        # ----------------------------------------------------
+        # =====================================================
 
         return Response(
             {
@@ -1554,6 +1575,9 @@ class WorkOrderResponseView(APIView):
                     "id": work_order.id,
                     "title": work_order.title,
                     "status": work_order.status,
+                    "client_response": (
+                        work_order.client_response
+                    ),
                     "client_response_comment": (
                         work_order.client_response_comment
                     ),

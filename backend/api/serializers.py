@@ -872,25 +872,33 @@ class ChangePasswordSerializer(serializers.Serializer):
         return user
 
 class WorkOrderResponseSerializer(serializers.Serializer):
+
     action = serializers.ChoiceField(
-        choices=["ACCEPT", "REJECT"]
+        choices=[
+            ("ACCEPT", "Accept"),
+            ("REJECT", "Reject"),
+        ]
     )
 
     comment = serializers.CharField(
         required=False,
         allow_blank=True,
+        default="",
     )
 
     def validate(self, attrs):
-        if (
-            attrs["action"] == "REJECT"
-            and not attrs.get("comment", "").strip()
-        ):
+
+        action = attrs["action"]
+        comment = attrs.get("comment", "").strip()
+
+        if action == "REJECT" and not comment:
             raise serializers.ValidationError({
                 "comment": (
                     "A comment is required when rejecting "
                     "a work order."
                 )
             })
+
+        attrs["comment"] = comment
 
         return attrs
