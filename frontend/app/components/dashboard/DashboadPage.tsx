@@ -1,14 +1,14 @@
-
+```tsx
 "use client";
 
-import { useEffect, useState } from "react";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { useEffect, useMemo, useState } from "react";
+import { apiJson, ApiError } from "@/lib/api";
 
 /* ============================================================
    TYPES
 ============================================================ */
+
+type Role = "ADMIN" | "TECHNICIAN" | "CLIENT";
 
 type User = {
   id: number;
@@ -16,294 +16,110 @@ type User = {
   email?: string;
   first_name?: string;
   last_name?: string;
-  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
+  role: Role;
   company_id?: number | null;
   company_name?: string | null;
-};
-
-type Company = {
-  id: number;
-  name: string;
 };
 
 type Asset = {
   id: number;
   name: string;
   serial_number: string;
-  company_name?: string;
-};
+  description?: string | null;
 
-type WorkOrder = {
-  id: number;
-  title: string;
-  status: string;
-  asset_name?: string;
-  company_name?: string;
-};
+  company?: number | null;
+  company_name?: string | null;
 
-type MaintenanceSchedule = {
-  id: number;
-  asset_name: string;
-  frequency: number;
-  frequency_unit: string;
-  next_maintenance_date: string | null;
-  schedule_status: string;
-};
+  qr_active?: boolean;
+  qr_created_at?: string | null;
+  qr_revoked_at?: string | null;
+  last_qr_scan_at?: string | null;
 
-type MaintenanceReport = {
-  id: number;
-  asset_name: string;
-  technician_username: string;
-  priority: string;
-  status: string;
-  review_status: string;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 /* ============================================================
-   API HELPERS
+   PAGE
 ============================================================ */
 
-async function fetchJson<T>(
-  endpoint: string,
-  token: string
-): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    window.location.href = "/login";
-    throw new Error("Session expired.");
-  }
-
-  if (!response.ok) {
-    let message = `Request failed: ${response.status}`;
-
-    try {
-      const data = await response.json();
-
-      if (typeof data?.detail === "string") {
-        message = data.detail;
-      }
-    } catch {
-      // Ignore invalid JSON
-    }
-
-    throw new Error(message);
-  }
-
-  return response.json();
-}
-
-/* ============================================================
-   MAIN DASHBOARD
-============================================================ */
-
-export default function Dashboard() {
+export default function AssetsPage() {
   const [user, setUser] = useState<User | null>(null);
-
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [schedules, setSchedules] = useState<
-    MaintenanceSchedule[]
-  >([]);
-  const [reports, setReports] = useState<
-    MaintenanceReport[]
-  >([]);
 
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedAsset, setSelectedAsset] =
+    useState<Asset | null>(null);
+
   useEffect(() => {
-    async function loadDashboard() {
-      const token = localStorage.getItem("access_token");
-
-      if (!token) {
-        window.location.href = "/login";
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError("");
-
-        /*
-         * STEP 1
-         * Get the authenticated user first.
-         */
-        const currentUser = await fetchJson<User>(
-          "/api/auth/me/",
-          token
-        );
-
-        setUser(currentUser);
-
-        /*
-         * STEP 2
-         * Load data according to the user's role.
-         */
-        if (currentUser.role === "ADMIN") {
-          const [
-            companiesData,
-            usersData,
-            assetsData,
-            workOrdersData,
-            schedulesData,
-            reportsData,
-          ] = await Promise.all([
-            fetchJson<Company[]>(
-              "/api/companies/",
-              token
-            ),
-
-            fetchJson<User[]>(
-              "/api/users/",
-              token
-            ),
-
-            fetchJson<Asset[]>(
-              "/api/assets/",
-              token
-            ),
-
-            fetchJson<WorkOrder[]>(
-              "/api/work-orders/",
-              token
-            ),
-
-            fetchJson<MaintenanceSchedule[]>(
-              "/api/maintenance-schedules/",
-              token
-            ),
-
-            fetchJson<MaintenanceReport[]>(
-              "/api/maintenance-reports/",
-              token
-            ),
-          ]);
-
-          setCompanies(companiesData);
-          setUsers(usersData);
-          setAssets(assetsData);
-          setWorkOrders(workOrdersData);
-          setSchedules(schedulesData);
-          setReports(reportsData);
-        }
-
-        /*
-         * CLIENT
-         *
-         * Clients should not request:
-         *
-         * /api/companies/
-         * /api/users/
-         *
-         * because those endpoints are administrative.
-         */
-        if (currentUser.role === "CLIENT") {
-          const [
-            assetsData,
-            workOrdersData,
-            reportsData,
-          ] = await Promise.all([
-            fetchJson<Asset[]>(
-              "/api/assets/",
-              token
-            ),
-
-            fetchJson<WorkOrder[]>(
-              "/api/work-orders/",
-              token
-            ),
-
-            fetchJson<MaintenanceReport[]>(
-              "/api/maintenance-reports/",
-              token
-            ),
-          ]);
-
-          setAssets(assetsData);
-          setWorkOrders(workOrdersData);
-          setReports(reportsData);
-        }
-
-        /*
-         * TECHNICIAN
-         */
-        if (currentUser.role === "TECHNICIAN") {
-          const [
-            assetsData,
-            workOrdersData,
-            reportsData,
-          ] = await Promise.all([
-            fetchJson<Asset[]>(
-              "/api/assets/",
-              token
-            ),
-
-            fetchJson<WorkOrder[]>(
-              "/api/work-orders/",
-              token
-            ),
-
-            fetchJson<MaintenanceReport[]>(
-              "/api/maintenance-reports/",
-              token
-            ),
-          ]);
-
-          setAssets(assetsData);
-          setWorkOrders(workOrdersData);
-          setReports(reportsData);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load dashboard."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboard();
+    loadAssets();
   }, []);
 
-  /* ============================================================
-     LOADING
-  ============================================================ */
+  async function loadAssets() {
+    try {
+      setLoading(true);
+      setError("");
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-      </div>
-    );
+      const [currentUser, assetData] = await Promise.all([
+        apiJson<User>("/api/auth/me/"),
+        apiJson<Asset[]>("/api/assets/"),
+      ]);
+
+      setUser(currentUser);
+      setAssets(assetData);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load assets.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
-  /* ============================================================
-     ERROR
-  ============================================================ */
+  const filteredAssets = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return assets;
+    }
+
+    return assets.filter((asset) => {
+      return (
+        asset.name.toLowerCase().includes(query) ||
+        asset.serial_number.toLowerCase().includes(query) ||
+        asset.company_name?.toLowerCase().includes(query)
+      );
+    });
+  }, [assets, search]);
+
+  if (loading) {
+    return <LoadingState />;
+  }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-900 bg-red-950/30 p-6">
+      <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
         <h2 className="font-semibold text-red-400">
-          Dashboard Error
+          Assets Error
         </h2>
 
         <p className="mt-2 text-sm text-red-300">
           {error}
         </p>
+
+        <button
+          onClick={loadAssets}
+          className="mt-4 rounded-lg bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -312,669 +128,471 @@ export default function Dashboard() {
     return null;
   }
 
-  /* ============================================================
-     ROLE DASHBOARDS
-  ============================================================ */
-
-  if (user.role === "CLIENT") {
-    return (
-      <ClientDashboard
-        user={user}
-        assets={assets}
-        workOrders={workOrders}
-        reports={reports}
-      />
-    );
-  }
-
-  if (user.role === "TECHNICIAN") {
-    return (
-      <TechnicianDashboard
-        user={user}
-        assets={assets}
-        workOrders={workOrders}
-        reports={reports}
-      />
-    );
-  }
-
-  return (
-    <AdminDashboard
-      companies={companies}
-      users={users}
-      assets={assets}
-      workOrders={workOrders}
-      schedules={schedules}
-      reports={reports}
-    />
-  );
-}
-
-/* ============================================================
-   ADMIN DASHBOARD
-============================================================ */
-
-function AdminDashboard({
-  companies,
-  users,
-  assets,
-  workOrders,
-  schedules,
-  reports,
-}: {
-  companies: Company[];
-  users: User[];
-  assets: Asset[];
-  workOrders: WorkOrder[];
-  schedules: MaintenanceSchedule[];
-  reports: MaintenanceReport[];
-}) {
-  const technicians = users.filter(
-    (user) => user.role === "TECHNICIAN"
-  );
-
-  const clients = users.filter(
-    (user) => user.role === "CLIENT"
-  );
-
-  const pendingWorkOrders = workOrders.filter(
-    (order) => order.status === "PENDING"
-  ).length;
-
-  const inProgressWorkOrders = workOrders.filter(
-    (order) => order.status === "IN_PROGRESS"
-  ).length;
-
-  const completedWorkOrders = workOrders.filter(
-    (order) => order.status === "COMPLETED"
-  ).length;
-
-  const overdueSchedules = schedules.filter(
-    (schedule) =>
-      schedule.schedule_status === "OVERDUE"
-  ).length;
-
-  const dueSoonSchedules = schedules.filter(
-    (schedule) =>
-      schedule.schedule_status === "DUE_SOON"
-  ).length;
-
-  const upcomingSchedules = schedules.filter(
-    (schedule) =>
-      schedule.schedule_status === "UPCOMING"
-  ).length;
+  const canCreateAsset = user.role === "ADMIN";
 
   return (
     <div className="space-y-8">
 
-      <DashboardHeader
-        label="ADMINISTRATOR"
-        title="Operations Dashboard"
-        description="Monitor companies, users, assets, maintenance and work orders from one place."
-      />
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Companies"
-          value={companies.length}
-          description="Registered companies"
-          icon="▣"
-        />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 
-        <StatCard
-          title="Users"
-          value={users.length}
-          description={`${technicians.length} technicians · ${clients.length} clients`}
-          icon="♙"
-        />
+        <div>
+          <p className="text-sm font-medium text-blue-400">
+            {user.role === "CLIENT"
+              ? "CLIENT PORTAL"
+              : user.role === "TECHNICIAN"
+                ? "TECHNICIAN PORTAL"
+                : "ADMINISTRATION"}
+          </p>
 
-        <StatCard
-          title="Assets"
-          value={assets.length}
-          description="Assets under management"
-          icon="◈"
-        />
+          <h1 className="mt-1 text-3xl font-bold text-white">
+            Assets
+          </h1>
 
-        <StatCard
-          title="Work Orders"
-          value={workOrders.length}
-          description={`${pendingWorkOrders} currently pending`}
-          icon="▤"
-        />
+          <p className="mt-2 max-w-2xl text-slate-400">
+            {user.role === "CLIENT"
+              ? "View the assets belonging to your company and monitor their maintenance status."
+              : user.role === "TECHNICIAN"
+                ? "View assets available for maintenance operations."
+                : "Manage registered assets and their company assignments."}
+          </p>
+        </div>
+
+        {canCreateAsset && (
+          <a
+            href="/assets/new"
+            className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+          >
+            <span className="mr-2 text-lg">+</span>
+            Add Asset
+          </a>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Maintenance Overview
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Current maintenance schedule health
-              </p>
-            </div>
-
-            <span className="rounded-lg bg-blue-500/10 px-3 py-2 text-blue-400">
-              🔧
-            </span>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <StatusRow
-              label="Overdue"
-              value={overdueSchedules}
-              status="danger"
-            />
-
-            <StatusRow
-              label="Due Soon"
-              value={dueSoonSchedules}
-              status="warning"
-            />
-
-            <StatusRow
-              label="Upcoming"
-              value={upcomingSchedules}
-              status="success"
-            />
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Work Order Status
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Current work order pipeline
-              </p>
-            </div>
-
-            <span className="rounded-lg bg-purple-500/10 px-3 py-2 text-purple-400">
-              ▤
-            </span>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <StatusRow
-              label="Pending"
-              value={pendingWorkOrders}
-              status="warning"
-            />
-
-            <StatusRow
-              label="In Progress"
-              value={inProgressWorkOrders}
-              status="info"
-            />
-
-            <StatusRow
-              label="Completed"
-              value={completedWorkOrders}
-              status="success"
-            />
-          </div>
-        </section>
-      </div>
-
-      <ReportsSection reports={reports} />
-    </div>
-  );
-}
-
-/* ============================================================
-   CLIENT DASHBOARD
-============================================================ */
-
-function ClientDashboard({
-  user,
-  assets,
-  workOrders,
-  reports,
-}: {
-  user: User;
-  assets: Asset[];
-  workOrders: WorkOrder[];
-  reports: MaintenanceReport[];
-}) {
-  const pending = workOrders.filter(
-    (order) => order.status === "PENDING"
-  ).length;
-
-  const inProgress = workOrders.filter(
-    (order) => order.status === "IN_PROGRESS"
-  ).length;
-
-  const completed = workOrders.filter(
-    (order) => order.status === "COMPLETED"
-  ).length;
-
-  const pendingReviews = reports.filter(
-    (report) => report.review_status === "PENDING"
-  ).length;
-
-  return (
-    <div className="space-y-8">
-
-      <DashboardHeader
-        label="CLIENT PORTAL"
-        title={`Welcome${user.first_name ? `, ${user.first_name}` : ""}`}
-        description={
-          user.company_name
-            ? `Manage your ${user.company_name} assets, work orders and maintenance reports.`
-            : "Manage your assets, work orders and maintenance reports."
-        }
-      />
+      {/* ======================================================
+          SUMMARY
+      ====================================================== */}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-        <StatCard
-          title="My Assets"
+        <SummaryCard
+          title="Total Assets"
           value={assets.length}
-          description="Assets under your company"
+          description={
+            user.role === "CLIENT"
+              ? "Assets assigned to your company"
+              : "Assets available"
+          }
           icon="◈"
         />
 
-        <StatCard
-          title="Work Orders"
-          value={workOrders.length}
-          description={`${pending} pending`}
-          icon="▤"
-        />
-
-        <StatCard
-          title="In Progress"
-          value={inProgress}
-          description="Currently being handled"
-          icon="🔧"
-        />
-
-        <StatCard
-          title="Reports"
-          value={reports.length}
-          description={`${pendingReviews} awaiting review`}
+        <SummaryCard
+          title="Active QR Codes"
+          value={
+            assets.filter(
+              (asset) => asset.qr_active === true
+            ).length
+          }
+          description="QR codes currently active"
           icon="▣"
         />
+
+        <SummaryCard
+          title="Inactive QR Codes"
+          value={
+            assets.filter(
+              (asset) => asset.qr_active === false
+            ).length
+          }
+          description="QR codes requiring attention"
+          icon="⚠"
+        />
+
+        <SummaryCard
+          title="Recently Scanned"
+          value={
+            assets.filter(
+              (asset) => asset.last_qr_scan_at
+            ).length
+          }
+          description="Assets with QR scan history"
+          icon="⌁"
+        />
+
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* ======================================================
+          SEARCH
+      ====================================================== */}
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
 
-          <h2 className="text-lg font-semibold text-white">
-            Work Order Status
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Current status of your work orders
-          </p>
-
-          <div className="mt-6 space-y-4">
-
-            <StatusRow
-              label="Pending"
-              value={pending}
-              status="warning"
-            />
-
-            <StatusRow
-              label="In Progress"
-              value={inProgress}
-              status="info"
-            />
-
-            <StatusRow
-              label="Completed"
-              value={completed}
-              status="success"
-            />
-          </div>
-
-          <a
-            href="/work-orders"
-            className="mt-6 inline-block text-sm font-medium text-blue-400 hover:text-blue-300"
-          >
-            View work orders →
-          </a>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-          <h2 className="text-lg font-semibold text-white">
-            Maintenance Reports
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Reports submitted by technicians
-          </p>
-
-          <div className="mt-6 space-y-3">
-
-            {reports.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No maintenance reports available.
-              </p>
-            ) : (
-              reports.slice(0, 4).map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-white">
-                      {report.asset_name}
-                    </p>
-
-                    <p className="mt-1 text-xs text-slate-500">
-                      {report.technician_username}
-                    </p>
-                  </div>
-
-                  <ReviewBadge
-                    status={report.review_status}
-                  />
-                </div>
-              ))
-            )}
-          </div>
-
-          <a
-            href="/reports"
-            className="mt-6 inline-block text-sm font-medium text-blue-400 hover:text-blue-300"
-          >
-            View reports →
-          </a>
-        </section>
-      </div>
-
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              My Assets
+            <h2 className="font-semibold text-white">
+              Asset Register
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Assets belonging to your company
+              {filteredAssets.length}{" "}
+              {filteredAssets.length === 1
+                ? "asset"
+                : "assets"}{" "}
+              displayed
             </p>
           </div>
 
-          <a
-            href="/assets"
-            className="text-sm font-medium text-blue-400 hover:text-blue-300"
-          >
-            View all →
-          </a>
+          <div className="relative w-full md:max-w-md">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+              ⌕
+            </span>
+
+            <input
+              type="text"
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+              placeholder="Search by asset or serial number..."
+              className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500"
+            />
+          </div>
+
+        </div>
+      </section>
+
+      {/* ======================================================
+          EMPTY STATE
+      ====================================================== */}
+
+      {filteredAssets.length === 0 ? (
+        <EmptyState
+          hasSearch={Boolean(search.trim())}
+          canCreateAsset={canCreateAsset}
+        />
+      ) : (
+        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+
+          {filteredAssets.map((asset) => (
+            <AssetCard
+              key={asset.id}
+              asset={asset}
+              userRole={user.role}
+              onClick={() => setSelectedAsset(asset)}
+            />
+          ))}
+
+        </section>
+      )}
+
+      {/* ======================================================
+          DETAILS MODAL
+      ====================================================== */}
+
+      {selectedAsset && (
+        <AssetDetailsModal
+          asset={selectedAsset}
+          userRole={user.role}
+          onClose={() => setSelectedAsset(null)}
+        />
+      )}
+
+    </div>
+  );
+}
+
+/* ============================================================
+   ASSET CARD
+============================================================ */
+
+function AssetCard({
+  asset,
+  userRole,
+  onClick,
+}: {
+  asset: Asset;
+  userRole: Role;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group text-left"
+    >
+      <div className="h-full rounded-2xl border border-slate-800 bg-slate-900 p-6 transition duration-200 hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900/80">
+
+        {/* Icon + QR status */}
+
+        <div className="flex items-start justify-between">
+
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-xl text-blue-400">
+            ◈
+          </div>
+
+          <QRBadge active={asset.qr_active} />
+
         </div>
 
-        {assets.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-6 text-center">
-            <p className="text-sm text-slate-500">
-              No assets have been assigned to your company yet.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Asset information */}
 
-            {assets.slice(0, 6).map((asset) => (
-              <div
-                key={asset.id}
-                className="rounded-xl border border-slate-800 bg-slate-950 p-5"
-              >
-                <p className="font-medium text-white">
-                  {asset.name}
-                </p>
+        <div className="mt-6">
 
-                <p className="mt-2 text-xs text-slate-500">
-                  Serial: {asset.serial_number}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
+          <h3 className="truncate text-lg font-semibold text-white group-hover:text-blue-400">
+            {asset.name}
+          </h3>
 
-/* ============================================================
-   TECHNICIAN DASHBOARD
-============================================================ */
-
-function TechnicianDashboard({
-  user,
-  assets,
-  workOrders,
-  reports,
-}: {
-  user: User;
-  assets: Asset[];
-  workOrders: WorkOrder[];
-  reports: MaintenanceReport[];
-}) {
-  const pending = workOrders.filter(
-    (order) => order.status === "PENDING"
-  ).length;
-
-  const inProgress = workOrders.filter(
-    (order) => order.status === "IN_PROGRESS"
-  ).length;
-
-  const completed = workOrders.filter(
-    (order) => order.status === "COMPLETED"
-  ).length;
-
-  return (
-    <div className="space-y-8">
-
-      <DashboardHeader
-        label="TECHNICIAN PORTAL"
-        title={`Welcome${user.first_name ? `, ${user.first_name}` : ""}`}
-        description="Manage assigned maintenance work, assets and service reports."
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
-        <StatCard
-          title="Work Orders"
-          value={workOrders.length}
-          description="Available work orders"
-          icon="▤"
-        />
-
-        <StatCard
-          title="Pending"
-          value={pending}
-          description="Awaiting action"
-          icon="⏳"
-        />
-
-        <StatCard
-          title="In Progress"
-          value={inProgress}
-          description="Currently working"
-          icon="🔧"
-        />
-
-        <StatCard
-          title="Reports"
-          value={reports.length}
-          description="Reports submitted"
-          icon="▣"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-          <h2 className="text-lg font-semibold text-white">
-            Maintenance Pipeline
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Your current maintenance workload
+          <p className="mt-2 text-sm text-slate-500">
+            Serial Number
           </p>
 
-          <div className="mt-6 space-y-4">
+          <p className="mt-1 font-mono text-sm text-slate-300">
+            {asset.serial_number}
+          </p>
 
-            <StatusRow
-              label="Pending"
-              value={pending}
-              status="warning"
-            />
+        </div>
 
-            <StatusRow
-              label="In Progress"
-              value={inProgress}
-              status="info"
-            />
+        {/* Company */}
 
-            <StatusRow
-              label="Completed"
-              value={completed}
-              status="success"
-            />
-          </div>
+        {userRole !== "CLIENT" &&
+          asset.company_name && (
+            <div className="mt-5 border-t border-slate-800 pt-4">
+              <p className="text-xs uppercase tracking-wide text-slate-600">
+                Company
+              </p>
 
-          <a
-            href="/maintenance"
-            className="mt-6 inline-block text-sm font-medium text-blue-400 hover:text-blue-300"
-          >
-            Open maintenance →
-          </a>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-          <div className="flex items-center justify-between">
-
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Recent Reports
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Recently submitted maintenance reports
+              <p className="mt-1 text-sm text-slate-400">
+                {asset.company_name}
               </p>
             </div>
+          )}
 
-            <a
-              href="/reports"
-              className="text-sm font-medium text-blue-400 hover:text-blue-300"
-            >
-              View all
-            </a>
-          </div>
+        {/* Footer */}
 
-          <div className="mt-6 space-y-3">
+        <div className="mt-5 flex items-center justify-between border-t border-slate-800 pt-4">
 
-            {reports.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No reports submitted yet.
-              </p>
-            ) : (
-              reports.slice(0, 5).map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4"
-                >
-                  <div>
-                    <p className="font-medium text-white">
-                      {report.asset_name}
-                    </p>
+          <span className="text-xs text-slate-500">
+            Asset #{asset.id}
+          </span>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      {report.priority} priority
-                    </p>
-                  </div>
+          <span className="text-sm font-medium text-blue-400">
+            View details →
+          </span>
 
-                  <PriorityBadge
-                    priority={report.priority}
-                  />
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+        </div>
+
       </div>
+    </button>
+  );
+}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+/* ============================================================
+   DETAILS MODAL
+============================================================ */
 
-        <h2 className="text-lg font-semibold text-white">
-          Accessible Assets
-        </h2>
+function AssetDetailsModal({
+  asset,
+  userRole,
+  onClose,
+}: {
+  asset: Asset;
+  userRole: Role;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
 
-        <p className="mt-1 text-sm text-slate-500">
-          Assets available for maintenance operations
-        </p>
+        {/* Header */}
 
-        {assets.length === 0 ? (
-          <p className="mt-6 text-sm text-slate-500">
-            No assets available.
-          </p>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex items-start justify-between border-b border-slate-800 p-6">
 
-            {assets.slice(0, 6).map((asset) => (
-              <div
-                key={asset.id}
-                className="rounded-xl border border-slate-800 bg-slate-950 p-5"
-              >
-                <p className="font-medium text-white">
-                  {asset.name}
-                </p>
+          <div>
+            <p className="text-sm font-medium text-blue-400">
+              ASSET DETAILS
+            </p>
 
-                <p className="mt-2 text-xs text-slate-500">
-                  Serial: {asset.serial_number}
+            <h2 className="mt-1 text-2xl font-bold text-white">
+              {asset.name}
+            </h2>
+
+            <p className="mt-1 font-mono text-sm text-slate-500">
+              {asset.serial_number}
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg px-3 py-2 text-slate-500 transition hover:bg-slate-800 hover:text-white"
+          >
+            ✕
+          </button>
+
+        </div>
+
+        {/* Body */}
+
+        <div className="space-y-6 p-6">
+
+          {/* Basic information */}
+
+          <div>
+            <h3 className="text-sm font-semibold text-white">
+              Asset Information
+            </h3>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+
+              <DetailItem
+                label="Asset Name"
+                value={asset.name}
+              />
+
+              <DetailItem
+                label="Serial Number"
+                value={asset.serial_number}
+              />
+
+              {userRole !== "CLIENT" && (
+                <DetailItem
+                  label="Company"
+                  value={
+                    asset.company_name || "Not assigned"
+                  }
+                />
+              )}
+
+              <DetailItem
+                label="Asset ID"
+                value={`#${asset.id}`}
+              />
+
+            </div>
+          </div>
+
+          {/* Description */}
+
+          {asset.description && (
+            <div>
+              <h3 className="text-sm font-semibold text-white">
+                Description
+              </h3>
+
+              <p className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-400">
+                {asset.description}
+              </p>
+            </div>
+          )}
+
+          {/* QR information */}
+
+          <div>
+            <div className="flex items-center justify-between">
+
+              <div>
+                <h3 className="text-sm font-semibold text-white">
+                  QR Code
+                </h3>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Asset identification and maintenance scanning
                 </p>
               </div>
-            ))}
+
+              <QRBadge active={asset.qr_active} />
+
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+
+              <DetailItem
+                label="QR Status"
+                value={
+                  asset.qr_active
+                    ? "Active"
+                    : "Inactive"
+                }
+              />
+
+              <DetailItem
+                label="Last Scan"
+                value={
+                  asset.last_qr_scan_at
+                    ? formatDate(asset.last_qr_scan_at)
+                    : "Never scanned"
+                }
+              />
+
+              <DetailItem
+                label="QR Created"
+                value={
+                  asset.qr_created_at
+                    ? formatDate(asset.qr_created_at)
+                    : "Not available"
+                }
+              />
+
+              {asset.qr_revoked_at && (
+                <DetailItem
+                  label="QR Revoked"
+                  value={formatDate(asset.qr_revoked_at)}
+                />
+              )}
+
+            </div>
           </div>
-        )}
-      </section>
+
+          {/* Actions */}
+
+          <div className="flex flex-col gap-3 border-t border-slate-800 pt-6 sm:flex-row">
+
+            {userRole === "TECHNICIAN" && (
+              <a
+                href="/maintenance"
+                className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Open Maintenance
+              </a>
+            )}
+
+            {userRole === "ADMIN" && (
+              <a
+                href={`/assets/${asset.id}`}
+                className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Manage Asset
+              </a>
+            )}
+
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+            >
+              Close
+            </button>
+
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ============================================================
-   SHARED COMPONENTS
+   SUMMARY CARD
 ============================================================ */
 
-function DashboardHeader({
-  label,
-  title,
-  description,
-}: {
-  label: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-blue-400">
-        {label}
-      </p>
-
-      <h1 className="mt-1 text-3xl font-bold text-white">
-        {title}
-      </h1>
-
-      <p className="mt-2 text-slate-400">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function StatCard({
+function SummaryCard({
   title,
   value,
   description,
@@ -986,7 +604,7 @@ function StatCard({
   icon: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-slate-700">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
 
       <div className="flex items-start justify-between">
 
@@ -1003,166 +621,168 @@ function StatCard({
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
           {icon}
         </div>
+
       </div>
 
       <p className="mt-4 text-xs text-slate-500">
         {description}
       </p>
+
     </div>
   );
 }
 
-function StatusRow({
+/* ============================================================
+   DETAIL ITEM
+============================================================ */
+
+function DetailItem({
   label,
   value,
-  status,
 }: {
   label: string;
-  value: number;
-  status: "danger" | "warning" | "success" | "info";
+  value: string;
 }) {
-  const styles = {
-    danger: "bg-red-500/10 text-red-400",
-    warning: "bg-yellow-500/10 text-yellow-400",
-    success: "bg-emerald-500/10 text-emerald-400",
-    info: "bg-blue-500/10 text-blue-400",
-  };
-
   return (
-    <div className="flex items-center justify-between">
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
 
-      <div className="flex items-center gap-3">
+      <p className="text-xs uppercase tracking-wide text-slate-600">
+        {label}
+      </p>
 
-        <span
-          className={`h-2 w-2 rounded-full ${styles[status]}`}
-        />
-
-        <span className="text-sm text-slate-300">
-          {label}
-        </span>
-      </div>
-
-      <span
-        className={`rounded-lg px-3 py-1 text-sm font-semibold ${styles[status]}`}
-      >
+      <p className="mt-2 break-words text-sm font-medium text-slate-300">
         {value}
-      </span>
+      </p>
+
     </div>
   );
 }
 
-function ReportsSection({
-  reports,
+/* ============================================================
+   QR BADGE
+============================================================ */
+
+function QRBadge({
+  active,
 }: {
-  reports: MaintenanceReport[];
+  active?: boolean;
+}) {
+  if (active === undefined) {
+    return (
+      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-400">
+        QR Unknown
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={
+        active
+          ? "rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400"
+          : "rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400"
+      }
+    >
+      {active ? "QR Active" : "QR Inactive"}
+    </span>
+  );
+}
+
+/* ============================================================
+   EMPTY STATE
+============================================================ */
+
+function EmptyState({
+  hasSearch,
+  canCreateAsset,
+}: {
+  hasSearch: boolean;
+  canCreateAsset: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900">
+    <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 p-12 text-center">
 
-      <div className="flex items-center justify-between border-b border-slate-800 p-6">
-
-        <div>
-          <h2 className="text-lg font-semibold text-white">
-            Recent Maintenance Reports
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Latest reports submitted by technicians
-          </p>
-        </div>
-
-        <a
-          href="/reports"
-          className="text-sm font-medium text-blue-400 hover:text-blue-300"
-        >
-          View all
-        </a>
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-2xl text-slate-500">
+        ◈
       </div>
 
-      {reports.length === 0 ? (
-        <div className="p-8 text-center text-sm text-slate-500">
-          No maintenance reports available.
-        </div>
-      ) : (
-        <div className="divide-y divide-slate-800">
+      <h2 className="mt-5 text-lg font-semibold text-white">
+        {hasSearch
+          ? "No assets found"
+          : "No assets yet"}
+      </h2>
 
-          {reports.slice(0, 5).map((report) => (
-            <div
-              key={report.id}
-              className="flex items-center justify-between gap-4 p-5"
-            >
+      <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+        {hasSearch
+          ? "Try adjusting your search to find the asset you are looking for."
+          : "There are currently no assets available for this account."}
+      </p>
 
-              <div className="min-w-0">
-
-                <p className="truncate font-medium text-white">
-                  {report.asset_name}
-                </p>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Technician: {report.technician_username}
-                </p>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-3">
-
-                <PriorityBadge
-                  priority={report.priority}
-                />
-
-                <ReviewBadge
-                  status={report.review_status}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+      {canCreateAsset && !hasSearch && (
+        <a
+          href="/assets/new"
+          className="mt-6 inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+        >
+          Add your first asset
+        </a>
       )}
-    </section>
+
+    </div>
   );
 }
 
-function PriorityBadge({
-  priority,
-}: {
-  priority: string;
-}) {
-  const styles: Record<string, string> = {
-    LOW: "bg-slate-800 text-slate-400",
-    MEDIUM: "bg-yellow-500/10 text-yellow-400",
-    HIGH: "bg-orange-500/10 text-orange-400",
-    CRITICAL: "bg-red-500/10 text-red-400",
-  };
+/* ============================================================
+   LOADING
+============================================================ */
 
+function LoadingState() {
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${
-        styles[priority] ?? styles.MEDIUM
-      }`}
-    >
-      {priority}
-    </span>
+    <div className="space-y-8">
+
+      <div>
+        <div className="h-4 w-28 animate-pulse rounded bg-slate-800" />
+        <div className="mt-3 h-9 w-40 animate-pulse rounded bg-slate-800" />
+        <div className="mt-3 h-4 w-96 max-w-full animate-pulse rounded bg-slate-800" />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <div
+            key={item}
+            className="h-32 animate-pulse rounded-2xl border border-slate-800 bg-slate-900"
+          />
+        ))}
+      </div>
+
+      <div className="h-20 animate-pulse rounded-2xl border border-slate-800 bg-slate-900" />
+
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <div
+            key={item}
+            className="h-64 animate-pulse rounded-2xl border border-slate-800 bg-slate-900"
+          />
+        ))}
+      </div>
+
+    </div>
   );
 }
 
-function ReviewBadge({
-  status,
-}: {
-  status: string;
-}) {
-  const styles: Record<string, string> = {
-    PENDING: "bg-yellow-500/10 text-yellow-400",
-    ACCEPTED: "bg-emerald-500/10 text-emerald-400",
-    REJECTED: "bg-red-500/10 text-red-400",
-  };
+/* ============================================================
+   DATE FORMATTER
+============================================================ */
 
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${
-        styles[status] ??
-        "bg-slate-800 text-slate-400"
-      }`}
-    >
-      {status}
-    </span>
-  );
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
+```
