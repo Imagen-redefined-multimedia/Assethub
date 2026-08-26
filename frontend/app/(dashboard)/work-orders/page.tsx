@@ -2,14 +2,27 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
 import { apiFetch, apiJson } from "@/lib/api";
+
+type Role = "ADMIN" | "TECHNICIAN" | "CLIENT";
 
 type WorkOrderStatus =
   | "PENDING"
   | "IN_PROGRESS"
   | "COMPLETED"
   | "CANCELLED";
+
+type CurrentUser = {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: Role;
+  is_active: boolean;
+  company_id: number | null;
+  company_name: string | null;
+};
 
 type WorkOrder = {
   id: number;
@@ -32,7 +45,7 @@ type Client = {
   email: string;
   first_name: string;
   last_name: string;
-  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
+  role: Role;
   is_active: boolean;
   company_id: number | null;
   company_name: string | null;
@@ -66,6 +79,8 @@ const STATUS_OPTIONS: WorkOrderStatus[] = [
 ];
 
 export default function WorkOrdersPage() {
+  const [user, setUser] = useState<CurrentUser | null>(null);
+
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -93,13 +108,55 @@ export default function WorkOrdersPage() {
     status: "PENDING",
   });
 
-  async function loadData() {
+  const isAdmin = user?.role === "ADMIN";
+  const isClient = user?.role === "CLIENT";
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.href = "/login";
+  }
+
+  async function loadUser(): Promise<CurrentUser> {
+    const response = await apiFetch("/api/auth/me/");
+
+    if (response.status === 401) {
+      logout();
+      throw new Error("Authentication required.");
+    }
+
+    if (!response.ok) {
+      throw new Error("Unable to identify the current user.");
+    }
+
+    const data = await response.json();
+
+    setUser(data);
+
+    return data;
+  }
+
+  async function loadData(currentUser: CurrentUser) {
     try {
       setLoading(true);
       setError("");
 
-      const [ordersData, usersData, assetsData] =
-        await Promise.all([
+      /*
+       * ---------------------------------------------------------
+       * ADMIN
+       * ---------------------------------------------------------
+       *
+       * Admin needs:
+       * - work orders
+       * - clients
+       * - assets
+       */
+      if (currentUser.role === "ADMIN") {
+        const [
+          ordersData,
+          usersData,
+          assetsData,
+        ] = await Promise.all([
           apiJson<WorkOrder[] | { results: WorkOrder[] }>(
             "/api/work-orders/"
           ),
@@ -113,36 +170,73 @@ export default function WorkOrdersPage() {
           ),
         ]);
 
-      setWorkOrders(
-        Array.isArray(ordersData)
-          ? ordersData
-          : ordersData.results ?? []
-      );
+        setWorkOrders(
+          Array.isArray(ordersData)
+            ? ordersData
+            : ordersData.results ?? []
+        );
 
-      const allUsers = Array.isArray(usersData)
-        ? usersData
-        : usersData.results ?? [];
+        const allUsers = Array.isArray(usersData)
+          ? usersData
+          : usersData.results ?? [];
 
-      setClients(
-        allUsers.filter(
-          (user) => user.role === "CLIENT"
-        )
-      );
+        setClients(
+          allUsers.filter(
+            (user) => user.role === "CLIENT"
+          )
+        );
 
-      setAssets(
-        Array.isArray(assetsData)
-          ? assetsData
-          : assetsData.results ?? []
-      );
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        err.message.includes("401")
-      ) {
-        logout();
+        setAssets(
+          Array.isArray(assetsData)
+            ? assetsData
+            : assetsData.results ?? []
+        );
+
         return;
       }
 
+      /*
+       * ---------------------------------------------------------
+       * CLIENT
+       * ---------------------------------------------------------
+       *
+       * Client only needs work orders.
+       *
+       * IMPORTANT:
+       * We deliberately do NOT request:
+       *
+       * /api/users/
+       * /api/assets/
+       *
+       * This prevents unnecessary 403 responses.
+       */
+      if (currentUser.role === "CLIENT") {
+        const ordersData = await apiJson<
+          WorkOrder[] | { results: WorkOrder[] }
+        >("/api/work-orders/");
+
+        setWorkOrders(
+          Array.isArray(ordersData)
+            ? ordersData
+            : ordersData.results ?? []
+        );
+
+        setClients([]);
+        setAssets([]);
+
+        return;
+      }
+
+      /*
+       * ---------------------------------------------------------
+       * TECHNICIAN
+       * ---------------------------------------------------------
+       */
+      if (currentUser.role === "TECHNICIAN") {
+        window.location.href = "/maintenance";
+        return;
+      }
+    } catch (err) {
       setError(
         err instanceof Error
           ? err.message
@@ -154,14 +248,31 @@ export default function WorkOrdersPage() {
   }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    async function initialise() {
+      const token = localStorage.getItem("access_token");
 
-  function logout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    window.location.href = "/login";
-  }
+      if (!token) {
+        logout();
+        return;
+      }
+
+      try {
+        const currentUser = await loadUser();
+
+        await loadData(currentUser);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to initialise work orders."
+        );
+
+        setLoading(false);
+      }
+    }
+
+    initialise();
+  }, []);
 
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -218,6 +329,8 @@ export default function WorkOrdersPage() {
   }
 
   function openCreateModal() {
+    if (!isAdmin) return;
+
     setEditingOrder(null);
     resetForm();
     setError("");
@@ -277,6 +390,13 @@ export default function WorkOrdersPage() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
+    if (!editingOrder && !isAdmin) {
+      setError(
+        "Only administrators can create work orders."
+      );
+      return;
+    }
 
     if (!form.client) {
       setError("Please select a client.");
@@ -350,7 +470,9 @@ export default function WorkOrdersPage() {
 
       closeModal();
 
-      await loadData();
+      if (user) {
+        await loadData(user);
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -363,6 +485,13 @@ export default function WorkOrdersPage() {
   }
 
   async function handleDelete(order: WorkOrder) {
+    if (!isAdmin) {
+      setError(
+        "Only administrators can delete work orders."
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete work order #${order.id}?`
     );
@@ -400,7 +529,9 @@ export default function WorkOrdersPage() {
         "Work order deleted successfully."
       );
 
-      await loadData();
+      if (user) {
+        await loadData(user);
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -410,13 +541,47 @@ export default function WorkOrdersPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
+      </div>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
+        <h2 className="font-semibold text-red-400">
+          Work Orders Error
+        </h2>
+
+        <p className="mt-2 text-sm text-red-300">
+          {error}
+        </p>
+
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+
       {/* Header */}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-400">
-            OPERATIONS
+            {isAdmin
+              ? "OPERATIONS"
+              : "CLIENT PORTAL"}
           </p>
 
           <h1 className="mt-1 text-3xl font-bold text-white">
@@ -424,35 +589,46 @@ export default function WorkOrdersPage() {
           </h1>
 
           <p className="mt-2 text-slate-400">
-            Create, track and manage maintenance work
-            orders across your client assets.
+            {isAdmin
+              ? "Create, track and manage maintenance work orders across your client assets."
+              : "View and manage maintenance work orders associated with your assets."}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-        >
-          + Create Work Order
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+          >
+            + Create Work Order
+          </button>
+        )}
       </div>
 
       {/* Feedback */}
+
       {success && (
         <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-5 py-4 text-sm text-emerald-300">
           {success}
         </div>
       )}
 
-      {error && !showModal && (
+      {error && (
         <div className="rounded-xl border border-red-900 bg-red-950/30 px-5 py-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
       {/* Statistics */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+
+      <div
+        className={`grid gap-4 ${
+          isAdmin
+            ? "sm:grid-cols-2 xl:grid-cols-5"
+            : "sm:grid-cols-2 lg:grid-cols-4"
+        }`}
+      >
         <StatCard
           title="Total"
           value={workOrders.length}
@@ -477,24 +653,33 @@ export default function WorkOrdersPage() {
           description="Successfully completed"
         />
 
-        <StatCard
-          title="Cancelled"
-          value={cancelledCount}
-          description="Cancelled orders"
-        />
+        {isAdmin && (
+          <StatCard
+            title="Cancelled"
+            value={cancelledCount}
+            description="Cancelled orders"
+          />
+        )}
       </div>
 
       {/* Work Orders */}
+
       <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+
         {/* Toolbar */}
+
         <div className="flex flex-col gap-4 border-b border-slate-800 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-semibold text-white">
-              Work Order Register
+              {isAdmin
+                ? "Work Order Register"
+                : "My Work Orders"}
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              View and manage maintenance requests.
+              {isAdmin
+                ? "View and manage maintenance requests."
+                : "Track maintenance requests for your assets."}
             </p>
           </div>
 
@@ -544,6 +729,7 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Loading */}
+
         {loading ? (
           <div className="flex min-h-60 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
@@ -563,10 +749,13 @@ export default function WorkOrdersPage() {
             <p className="mt-2 text-sm text-slate-500">
               {search || statusFilter !== "ALL"
                 ? "Try changing your search or filter."
-                : "Create your first work order to get started."}
+                : isAdmin
+                  ? "Create your first work order to get started."
+                  : "There are currently no work orders associated with your account."}
             </p>
 
-            {!search &&
+            {isAdmin &&
+              !search &&
               statusFilter === "ALL" && (
                 <button
                   type="button"
@@ -579,20 +768,25 @@ export default function WorkOrdersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px]">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-slate-800 text-left">
+
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Work Order
                   </th>
 
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Company
-                  </th>
+                  {isAdmin && (
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Company
+                    </th>
+                  )}
 
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Client
-                  </th>
+                  {isAdmin && (
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Client
+                    </th>
+                  )}
 
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Asset
@@ -616,6 +810,7 @@ export default function WorkOrdersPage() {
                   >
                     <td className="px-6 py-5">
                       <div className="flex items-start gap-3">
+
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">
                           #{order.id}
                         </div>
@@ -628,22 +823,31 @@ export default function WorkOrdersPage() {
                           <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
                             {order.description}
                           </p>
+
+                          <p className="mt-2 text-xs text-slate-600">
+                            {formatDate(order.created_at)}
+                          </p>
                         </div>
+
                       </div>
                     </td>
 
-                    <td className="px-6 py-5">
-                      <p className="text-sm font-medium text-slate-300">
-                        {order.company_name ||
-                          "No company"}
-                      </p>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-5">
+                        <p className="text-sm font-medium text-slate-300">
+                          {order.company_name ||
+                            "No company"}
+                        </p>
+                      </td>
+                    )}
 
-                    <td className="px-6 py-5">
-                      <p className="text-sm text-slate-300">
-                        {order.client_username}
-                      </p>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-5">
+                        <p className="text-sm text-slate-300">
+                          {order.client_username}
+                        </p>
+                      </td>
+                    )}
 
                     <td className="px-6 py-5">
                       <p className="text-sm font-medium text-slate-300">
@@ -659,25 +863,31 @@ export default function WorkOrdersPage() {
 
                     <td className="px-6 py-5">
                       <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openEditModal(order)
-                          }
-                          className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
-                        >
-                          Edit
-                        </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDelete(order)
-                          }
-                          className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
-                        >
-                          Delete
-                        </button>
+                        {(isAdmin || isClient) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(order)
+                            }
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+                          >
+                            View / Edit
+                          </button>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDelete(order)
+                            }
+                            className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
+                          >
+                            Delete
+                          </button>
+                        )}
+
                       </div>
                     </td>
                   </tr>
@@ -689,137 +899,192 @@ export default function WorkOrdersPage() {
       </section>
 
       {/* Modal */}
+
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+
           <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
-            {/* Modal Header */}
+
             <div className="border-b border-slate-800 p-6">
               <h2 className="text-xl font-semibold text-white">
                 {editingOrder
-                  ? "Edit Work Order"
+                  ? isAdmin
+                    ? "Edit Work Order"
+                    : "Update Work Order"
                   : "Create Work Order"}
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
                 {editingOrder
-                  ? "Update the maintenance work order."
+                  ? "Review and update the maintenance work order."
                   : "Create a new maintenance work order for a client asset."}
               </p>
             </div>
 
-            {/* Form */}
             <form
               onSubmit={handleSubmit}
               className="space-y-5 p-6"
             >
+
               {error && (
                 <div className="rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
                   {error}
                 </div>
               )}
 
-              {/* Client */}
-              <SelectField
-                label="Client"
-                value={
-                  form.client !== null
-                    ? String(form.client)
-                    : ""
-                }
-                onChange={(value) =>
-                  handleClientChange(
-                    value ? Number(value) : null
-                  )
-                }
-                required
-              >
-                <option value="">
-                  Select a client
-                </option>
+              {/* ADMIN CLIENT SELECT */}
 
-                {clients.map((client) => (
-                  <option
-                    key={client.id}
-                    value={client.id}
+              {isAdmin && (
+                <>
+                  <SelectField
+                    label="Client"
+                    value={
+                      form.client !== null
+                        ? String(form.client)
+                        : ""
+                    }
+                    onChange={(value) =>
+                      handleClientChange(
+                        value
+                          ? Number(value)
+                          : null
+                      )
+                    }
+                    required
                   >
-                    {client.first_name ||
-                    client.last_name
-                      ? `${client.first_name} ${client.last_name}`.trim()
-                      : client.username}
-                    {client.company_name
-                      ? ` — ${client.company_name}`
-                      : ""}
-                  </option>
-                ))}
-              </SelectField>
+                    <option value="">
+                      Select a client
+                    </option>
 
-              {/* Company */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">
-                  Company
-                </label>
+                    {clients.map((client) => (
+                      <option
+                        key={client.id}
+                        value={client.id}
+                      >
+                        {client.first_name ||
+                        client.last_name
+                          ? `${client.first_name} ${client.last_name}`.trim()
+                          : client.username}
 
-                <input
-                  type="text"
-                  value={
-                    clients.find(
-                      (client) =>
-                        client.id === form.client
-                    )?.company_name || ""
-                  }
-                  disabled
-                  placeholder="Company is assigned from the client"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-400 outline-none"
-                />
+                        {client.company_name
+                          ? ` — ${client.company_name}`
+                          : ""}
+                      </option>
+                    ))}
+                  </SelectField>
 
-                <p className="mt-2 text-xs text-slate-600">
-                  The company is automatically determined
-                  from the selected client.
-                </p>
-              </div>
+                  {/* Company */}
 
-              {/* Asset */}
-              <SelectField
-                label="Asset"
-                value={
-                  form.asset !== null
-                    ? String(form.asset)
-                    : ""
-                }
-                onChange={(value) =>
-                  setForm((current) => ({
-                    ...current,
-                    asset: value
-                      ? Number(value)
-                      : null,
-                  }))
-                }
-                required
-                disabled={
-                  !form.client ||
-                  availableAssets.length === 0
-                }
-              >
-                <option value="">
-                  {!form.client
-                    ? "Select a client first"
-                    : availableAssets.length === 0
-                      ? "No assets assigned to this client"
-                      : "Select an asset"}
-                </option>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Company
+                    </label>
 
-                {availableAssets.map((asset) => (
-                  <option
-                    key={asset.id}
-                    value={asset.id}
+                    <input
+                      type="text"
+                      value={
+                        clients.find(
+                          (client) =>
+                            client.id ===
+                            form.client
+                        )?.company_name || ""
+                      }
+                      disabled
+                      placeholder="Company is assigned from the client"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-400 outline-none"
+                    />
+
+                    <p className="mt-2 text-xs text-slate-600">
+                      The company is automatically
+                      determined from the selected
+                      client.
+                    </p>
+                  </div>
+
+                  {/* Asset */}
+
+                  <SelectField
+                    label="Asset"
+                    value={
+                      form.asset !== null
+                        ? String(form.asset)
+                        : ""
+                    }
+                    onChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        asset: value
+                          ? Number(value)
+                          : null,
+                      }))
+                    }
+                    required
+                    disabled={
+                      !form.client ||
+                      availableAssets.length === 0
+                    }
                   >
-                    {asset.name} —{" "}
-                    {asset.serial_number}
-                  </option>
-                ))}
-              </SelectField>
+                    <option value="">
+                      {!form.client
+                        ? "Select a client first"
+                        : availableAssets.length === 0
+                          ? "No assets assigned to this client"
+                          : "Select an asset"}
+                    </option>
+
+                    {availableAssets.map(
+                      (asset) => (
+                        <option
+                          key={asset.id}
+                          value={asset.id}
+                        >
+                          {asset.name} —{" "}
+                          {asset.serial_number}
+                        </option>
+                      )
+                    )}
+                  </SelectField>
+                </>
+              )}
+
+              {/* CLIENT READ-ONLY CONTEXT */}
+
+              {isClient && editingOrder && (
+                <div className="grid gap-4 sm:grid-cols-2">
+
+                  <InfoField
+                    label="Asset"
+                    value={
+                      editingOrder.asset_name
+                    }
+                  />
+
+                  <InfoField
+                    label="Company"
+                    value={
+                      editingOrder.company_name ||
+                      user?.company_name ||
+                      "Your company"
+                    }
+                  />
+
+                  <InfoField
+                    label="Work Order"
+                    value={`#${editingOrder.id}`}
+                  />
+
+                  <InfoField
+                    label="Created"
+                    value={formatDate(
+                      editingOrder.created_at
+                    )}
+                  />
+
+                </div>
+              )}
 
               {/* Title */}
+
               <Input
                 label="Work Order Title"
                 value={form.title}
@@ -834,6 +1099,7 @@ export default function WorkOrdersPage() {
               />
 
               {/* Description */}
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-300">
                   Description
@@ -856,6 +1122,7 @@ export default function WorkOrdersPage() {
               </div>
 
               {/* Status */}
+
               <SelectField
                 label="Status"
                 value={form.status}
@@ -866,19 +1133,31 @@ export default function WorkOrdersPage() {
                       value as WorkOrderStatus,
                   }))
                 }
+                disabled={!isAdmin}
               >
-                {STATUS_OPTIONS.map((status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {formatStatus(status)}
-                  </option>
-                ))}
+                {STATUS_OPTIONS.map(
+                  (status) => (
+                    <option
+                      key={status}
+                      value={status}
+                    >
+                      {formatStatus(status)}
+                    </option>
+                  )
+                )}
               </SelectField>
 
+              {!isAdmin && (
+                <p className="text-xs text-slate-500">
+                  Work order status is managed by the
+                  operations team.
+                </p>
+              )}
+
               {/* Actions */}
+
               <div className="flex justify-end gap-3 border-t border-slate-800 pt-5">
+
                 <button
                   type="button"
                   onClick={closeModal}
@@ -899,6 +1178,7 @@ export default function WorkOrdersPage() {
                       ? "Save Changes"
                       : "Create Work Order"}
                 </button>
+
               </div>
             </form>
           </div>
@@ -988,6 +1268,30 @@ function SelectField({
 }
 
 /* ============================================================
+   INFO FIELD
+============================================================ */
+
+function InfoField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
    STAT CARD
 ============================================================ */
 
@@ -1032,10 +1336,13 @@ function StatusBadge({
   > = {
     PENDING:
       "bg-amber-500/10 text-amber-400",
+
     IN_PROGRESS:
       "bg-blue-500/10 text-blue-400",
+
     COMPLETED:
       "bg-emerald-500/10 text-emerald-400",
+
     CANCELLED:
       "bg-red-500/10 text-red-400",
   };
@@ -1064,23 +1371,50 @@ function formatStatus(
     );
 }
 
+function formatDate(
+  date: string
+) {
+  if (!date) return "—";
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return date;
+  }
+
+  return parsed.toLocaleDateString(
+    undefined,
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }
+  );
+}
+
 function extractApiError(
   data: unknown
 ): string | null {
-  if (!data || typeof data !== "object") {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
     return null;
   }
 
   const object =
     data as Record<string, unknown>;
 
-  if (typeof object.detail === "string") {
+  if (
+    typeof object.detail === "string"
+  ) {
     return object.detail;
   }
 
-  for (const [field, value] of Object.entries(
-    object
-  )) {
+  for (
+    const [field, value]
+    of Object.entries(object)
+  ) {
     if (typeof value === "string") {
       return `${field}: ${value}`;
     }
@@ -1107,4 +1441,3 @@ function extractApiError(
 
   return null;
 }
-
