@@ -742,7 +742,7 @@ export default function WorkOrdersPage() {
             order.id
           ),
           {
-            method: "PATCH",
+            method: "POST",
             body: JSON.stringify({
               client_response:
                 response,
