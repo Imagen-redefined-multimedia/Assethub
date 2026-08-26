@@ -226,120 +226,141 @@ export default function WorkOrdersPage() {
      LOAD DATA
   ============================================================ */
 
-  async function loadData(
-    currentUser: CurrentUser
-  ) {
-    try {
+ async function loadData(
+  currentUser: CurrentUser,
+  options?: {
+    background?: boolean;
+  }
+) {
+  const background =
+    options?.background ?? false;
+
+  try {
+    if (!background) {
       setLoading(true);
-      setError("");
+    }
 
-      /*
-       * ADMIN
-       *
-       * Admin can see:
-       * - Work orders
-       * - Users
-       * - Assets
-       */
-      if (
-        currentUser.role === "ADMIN"
-      ) {
-        const [
-          ordersData,
-          usersData,
-          assetsData,
-        ] = await Promise.all([
-          apiJson<
-            WorkOrder[] |
-            { results: WorkOrder[] }
-          >("/api/work-orders/"),
+    setError("");
 
-          apiJson<
-            Client[] |
-            { results: Client[] }
-          >("/api/users/"),
+    /*
+     * ADMIN
+     */
+    if (currentUser.role === "ADMIN") {
+      const [
+        ordersData,
+        usersData,
+        assetsData,
+      ] = await Promise.all([
+        apiJson<
+          WorkOrder[] |
+          { results: WorkOrder[] }
+        >("/api/work-orders/"),
 
-          apiJson<
-            Asset[] |
-            { results: Asset[] }
-          >("/api/assets/"),
-        ]);
+        apiJson<
+          Client[] |
+          { results: Client[] }
+        >("/api/users/"),
 
-        setWorkOrders(
-          Array.isArray(ordersData)
-            ? ordersData
-            : ordersData.results ?? []
-        );
+        apiJson<
+          Asset[] |
+          { results: Asset[] }
+        >("/api/assets/"),
+      ]);
 
-        const allUsers =
-          Array.isArray(usersData)
-            ? usersData
-            : usersData.results ?? [];
+      setWorkOrders(
+        Array.isArray(ordersData)
+          ? ordersData
+          : ordersData.results ?? []
+      );
 
-        setClients(
-          allUsers.filter(
-            (item) =>
-              item.role === "CLIENT"
-          )
-        );
+      const allUsers =
+        Array.isArray(usersData)
+          ? usersData
+          : usersData.results ?? [];
 
-        setAssets(
-          Array.isArray(assetsData)
-            ? assetsData
-            : assetsData.results ?? []
-        );
+      setClients(
+        allUsers.filter(
+          (item) =>
+            item.role === "CLIENT"
+        )
+      );
 
-        return;
-      }
+      setAssets(
+        Array.isArray(assetsData)
+          ? assetsData
+          : assetsData.results ?? []
+      );
 
-      /*
-       * CLIENT
-       *
-       * Client only needs work orders.
-       */
-      if (
-        currentUser.role === "CLIENT"
-      ) {
-        const ordersData =
-          await apiJson<
-            WorkOrder[] |
-            { results: WorkOrder[] }
-          >("/api/work-orders/");
+      return;
+    }
 
-        setWorkOrders(
-          Array.isArray(ordersData)
-            ? ordersData
-            : ordersData.results ?? []
-        );
+    /*
+     * CLIENT
+     */
+    if (currentUser.role === "CLIENT") {
+      const ordersData =
+        await apiJson<
+          WorkOrder[] |
+          { results: WorkOrder[] }
+        >("/api/work-orders/");
 
-        setClients([]);
-        setAssets([]);
+      setWorkOrders(
+        Array.isArray(ordersData)
+          ? ordersData
+          : ordersData.results ?? []
+      );
 
-        return;
-      }
+      setClients([]);
+      setAssets([]);
 
-      /*
-       * TECHNICIAN
-       */
-      if (
-        currentUser.role === "TECHNICIAN"
-      ) {
-        window.location.href =
-          "/maintenance";
+      return;
+    }
 
-        return;
-      }
-    } catch (err) {
+    /*
+     * TECHNICIAN
+     */
+    if (currentUser.role === "TECHNICIAN") {
+      window.location.href =
+        "/maintenance";
+
+      return;
+    }
+  } catch (err) {
+    /*
+     * During background refresh we don't want
+     * to wipe out the existing page just because
+     * one polling request failed.
+     */
+    if (!background) {
       setError(
         err instanceof Error
           ? err.message
           : "Failed to load work orders."
       );
-    } finally {
+    }
+  } finally {
+    if (!background) {
       setLoading(false);
     }
   }
+}
 
+ useEffect(() => {
+  if (!user) {
+    return;
+  }
+
+  const intervalId =
+    window.setInterval(() => {
+      loadData(user, {
+        background: true,
+      });
+    }, 10000);
+
+  return () => {
+    window.clearInterval(intervalId);
+  };
+}, [user]); 
   /* ============================================================
      INITIALISE
   ============================================================ */
@@ -453,13 +474,11 @@ export default function WorkOrdersPage() {
     ).length;
 
   const awaitingResponseCount =
-    workOrders.filter(
-      (order) =>
-        !order.client_response ||
-        order.client_response ===
-          "PENDING"
-    ).length;
-
+  workOrders.filter(
+    (order) =>
+      order.client_response === "PENDING" ||
+      order.client_response == null
+  ).length;
   /* ============================================================
      ADMIN FORM
   ============================================================ */
@@ -711,6 +730,15 @@ export default function WorkOrdersPage() {
     ) {
       return;
     }
+
+    if (
+  !needsClientResponse(editingOrder)
+) {
+  setError(
+    "This work order has already received a response."
+  );
+  return;
+}
 
     if (
       responseAction === "REJECT" &&
@@ -1904,80 +1932,102 @@ function ClientResponseModal({
           </div>
         )}
 
-        {/* Response */}
+          {/* Response */}
 
-        <div>
-          <p className="mb-3 text-sm font-medium text-slate-300">
-            Your Response
-          </p>
+          {!alreadyResponded && (
+            <>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-300">
+                  Your Response
+                </p>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ResponseOption
-              selected={
-                action ===
-                "ACCEPT"
-              }
-              title="Accept"
-              description="Approve the work order."
-              onClick={() =>
-                onActionChange(
-                  "ACCEPT"
-                )
-              }
-            />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <ResponseOption
+                    selected={
+                      action === "ACCEPT"
+                    }
+                    title="Accept"
+                    description="Approve the work order."
+                    onClick={() =>
+                      onActionChange("ACCEPT")
+                    }
+                  />
 
-            <ResponseOption
-              selected={
-                action ===
-                "REJECT"
-              }
-              title="Reject"
-              description="Decline the work order."
-              onClick={() =>
-                onActionChange(
-                  "REJECT"
-                )
-              }
-            />
-          </div>
-        </div>
+                  <ResponseOption
+                    selected={
+                      action === "REJECT"
+                    }
+                    title="Reject"
+                    description="Decline the work order."
+                    onClick={() =>
+                      onActionChange("REJECT")
+                    }
+                  />
+                </div>
+              </div>
 
-        {/* Comment */}
+              {/* Comment */}
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-300">
-            Comment
-            {action ===
-              "REJECT" && (
-              <span className="ml-1 text-red-400">
-                *
-              </span>
-            )}
-          </label>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Comment
+                  {action === "REJECT" && (
+                    <span className="ml-1 text-red-400">
+                      *
+                    </span>
+                  )}
+                </label>
 
-          <textarea
-            value={
-              comment
-            }
-            onChange={(
-              event
-            ) =>
-              onCommentChange(
-                event.target
-                  .value
-              )
-            }
-            rows={4}
-            placeholder={
-              action ===
-              "REJECT"
-                ? "Please explain why you are rejecting this work order..."
-                : "Add an optional comment..."
-            }
-            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
-          />
-        </div>
+                <textarea
+                  value={comment}
+                  onChange={(event) =>
+                    onCommentChange(
+                      event.target.value
+                    )
+                  }
+                  rows={4}
+                  placeholder={
+                    action === "REJECT"
+                      ? "Please explain why you are rejecting this work order..."
+                      : "Add an optional comment..."
+                  }
+                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                />
+              </div>
 
+              <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-4">
+                <p className="text-xs leading-5 text-blue-300">
+                  Your response will be recorded
+                  against this work order and made
+                  available to the operations team.
+                </p>
+              </div>
+
+              <ModalActions
+                saving={saving}
+                submitText={
+                  action === "ACCEPT"
+                    ? "Accept Work Order"
+                    : "Reject Work Order"
+                }
+                onClose={onClose}
+              />
+            </>
+          )}
+
+          {alreadyResponded && (
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-sm font-medium text-slate-300">
+                Response already submitted
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                This work order has already received
+                your response and cannot be changed
+                from this screen.
+              </p>
+            </div>
+          )}
         <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-4">
           <p className="text-xs leading-5 text-blue-300">
             Your response will be recorded
@@ -2031,6 +2081,11 @@ function WorkOrderCard({
     order: WorkOrder
   ) => void;
 }) {
+
+  const requiresResponse =
+  isClient &&
+  needsClientResponse(order);
+
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -2124,7 +2179,9 @@ function WorkOrderCard({
             className="w-full rounded-lg border border-slate-700 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400 sm:w-auto"
           >
             {isClient
-              ? "Review Work Order"
+              ? requiresResponse
+                ?"Respond"
+                : "View"
               : "Edit"}
           </button>
         )}
@@ -2172,6 +2229,11 @@ function OrderActions({
     order: WorkOrder
   ) => void;
 }) {
+
+  const requiresResponse =
+  isClient &&
+  needsClientResponse(order);
+
   return (
     <div className="flex justify-end gap-2">
       {(isAdmin ||
@@ -2184,7 +2246,9 @@ function OrderActions({
           className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
         >
           {isClient
-            ? "Review"
+           ? requiresResponse
+              ? "Respond"
+              : "View"
             : "Edit"}
         </button>
       )}
@@ -2671,7 +2735,14 @@ function ErrorMessage({
 /* ============================================================
    HELPERS
 ============================================================ */
-
+function needsClientResponse(
+  order: WorkOrder
+) {
+  return (
+    order.client_response === "PENDING" ||
+    order.client_response == null
+  );
+}
 function formatStatus(
   status: string
 ) {
