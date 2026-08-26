@@ -409,7 +409,7 @@ export default function MaintenanceTaskPage() {
               type="button"
               onClick={() =>
                 router.push(
-                  `/maintenance/${maintenance.id}/report`
+                  `/maintenance/${maintenance.id}`
                 )
               }
               className="shrink-0 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
