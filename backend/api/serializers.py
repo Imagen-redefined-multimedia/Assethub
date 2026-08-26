@@ -707,6 +707,10 @@ class WorkOrderSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "status",
+
+            "client_response_comment",
+            "client_responded_at",
+
             "created_at",
             "updated_at",
         ]
@@ -716,6 +720,10 @@ class WorkOrderSerializer(serializers.ModelSerializer):
             "company_name",
             "client_username",
             "asset_name",
+
+            "client_response_comment",
+            "client_responded_at",
+
             "created_at",
             "updated_at",
         ]
@@ -862,3 +870,27 @@ class ChangePasswordSerializer(serializers.Serializer):
         )
 
         return user
+
+class WorkOrderResponseSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(
+        choices=["ACCEPT", "REJECT"]
+    )
+
+    comment = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate(self, attrs):
+        if (
+            attrs["action"] == "REJECT"
+            and not attrs.get("comment", "").strip()
+        ):
+            raise serializers.ValidationError({
+                "comment": (
+                    "A comment is required when rejecting "
+                    "a work order."
+                )
+            })
+
+        return attrs

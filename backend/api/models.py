@@ -220,6 +220,11 @@ class WorkOrder(models.Model):
         COMPLETED = "COMPLETED", "Completed"
         CANCELLED = "CANCELLED", "Cancelled"
 
+    class ClientResponse(models.TextChoices):
+        PENDING = "PENDING", "Pending Response"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+
     client = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -241,8 +246,15 @@ class WorkOrder(models.Model):
         related_name="work_orders",
     )
 
-    title = models.CharField(max_length=255)
+    title = models.CharField(
+        max_length=255,
+    )
+
     description = models.TextField()
+
+    # --------------------------------------------------------
+    # WORK ORDER STATUS
+    # --------------------------------------------------------
 
     status = models.CharField(
         max_length=20,
@@ -250,8 +262,37 @@ class WorkOrder(models.Model):
         default=Status.PENDING,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # --------------------------------------------------------
+    # CLIENT ACCEPTANCE / REJECTION
+    # --------------------------------------------------------
+
+    client_response = models.CharField(
+        max_length=20,
+        choices=ClientResponse.choices,
+        default=ClientResponse.PENDING,
+    )
+
+    client_response_comment = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    client_responded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    # --------------------------------------------------------
+    # TIMESTAMPS
+    # --------------------------------------------------------
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
     def __str__(self):
         return f"WO-{self.id}: {self.title}"

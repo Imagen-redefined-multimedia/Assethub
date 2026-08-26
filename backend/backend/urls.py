@@ -53,6 +53,7 @@ from api.views import (
     # Work Orders
     WorkOrderListCreateView,
     WorkOrderDetailView,
+    WorkOrderResponseView,
 )
 
 
@@ -294,7 +295,15 @@ path(
     name="change-password",
 ),
 
+# ========================================================
+# CLIENT - ACCEPT / REJECT WORK ORDER
+# ========================================================
 
+path(
+    "api/work-orders/<int:pk>/respond/",
+    WorkOrderResponseView.as_view(),
+    name="work-order-response",
+),
 
 ]
 
