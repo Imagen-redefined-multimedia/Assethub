@@ -1,7 +1,24 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { apiFetch, apiJson } from "@/lib/api";
+
+/* ============================================================
+   TYPES
+============================================================ */
+
+type Role = "ADMIN" | "TECHNICIAN" | "CLIENT";
+
+type Company = {
+  id: number;
+  name: string;
+};
 
 type User = {
   id: number;
@@ -9,8 +26,11 @@ type User = {
   email: string;
   first_name: string;
   last_name: string;
-  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
+  role: Role;
   is_active: boolean;
+
+  company?: number | null;
+  company_name?: string | null;
 };
 
 type UserForm = {
@@ -18,22 +38,38 @@ type UserForm = {
   email: string;
   first_name: string;
   last_name: string;
-  role: "ADMIN" | "TECHNICIAN" | "CLIENT";
+  role: Role;
   password: string;
+  company: string;
 };
 
+/* ============================================================
+   PAGE
+============================================================ */
+
 export default function UsersPage() {
+  /* ----------------------------------------------------------
+     STATE
+  ---------------------------------------------------------- */
+
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
+  const [companiesLoading, setCompaniesLoading] =
+    useState(true);
+
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const [editingUser, setEditingUser] =
+    useState<User | null>(null);
 
   const [form, setForm] = useState<UserForm>({
     username: "",
@@ -42,18 +78,27 @@ export default function UsersPage() {
     last_name: "",
     role: "CLIENT",
     password: "",
+    company: "",
   });
+
+  /* ==========================================================
+     LOAD USERS
+  ========================================================== */
 
   async function getUsers() {
     try {
       setLoading(true);
       setError("");
 
-      const data = await apiJson<User[] | { results: User[] }>(
-        "/api/users/"
-      );
+      const data = await apiJson<
+        User[] | { results: User[] }
+      >("/api/users/");
 
-      setUsers(Array.isArray(data) ? data : data.results ?? []);
+      setUsers(
+        Array.isArray(data)
+          ? data
+          : data.results ?? []
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -65,9 +110,51 @@ export default function UsersPage() {
     }
   }
 
+  /* ==========================================================
+     LOAD COMPANIES
+  ========================================================== */
+
+  async function getCompanies() {
+    try {
+      setCompaniesLoading(true);
+
+      const data = await apiJson<
+        Company[] | { results: Company[] }
+      >("/api/companies/");
+
+      setCompanies(
+        Array.isArray(data)
+          ? data
+          : data.results ?? []
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load companies:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load companies."
+      );
+    } finally {
+      setCompaniesLoading(false);
+    }
+  }
+
+  /* ==========================================================
+     INITIAL LOAD
+  ========================================================== */
+
   useEffect(() => {
     getUsers();
+    getCompanies();
   }, []);
+
+  /* ==========================================================
+     FILTER USERS
+  ========================================================== */
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -83,12 +170,17 @@ export default function UsersPage() {
         user.first_name,
         user.last_name,
         user.role,
+        user.company_name ?? "",
       ]
         .join(" ")
         .toLowerCase()
         .includes(query)
     );
   }, [users, search]);
+
+  /* ==========================================================
+     STATISTICS
+  ========================================================== */
 
   const admins = users.filter(
     (user) => user.role === "ADMIN"
@@ -102,9 +194,11 @@ export default function UsersPage() {
     (user) => user.role === "CLIENT"
   ).length;
 
-  function openCreateModal() {
-    setEditingUser(null);
+  /* ==========================================================
+     RESET FORM
+  ========================================================== */
 
+  function resetForm() {
     setForm({
       username: "",
       email: "",
@@ -112,12 +206,28 @@ export default function UsersPage() {
       last_name: "",
       role: "CLIENT",
       password: "",
+      company: "",
     });
+  }
+
+  /* ==========================================================
+     CREATE MODAL
+  ========================================================== */
+
+  function openCreateModal() {
+    setEditingUser(null);
+
+    resetForm();
 
     setError("");
     setSuccess("");
+
     setShowModal(true);
   }
+
+  /* ==========================================================
+     EDIT MODAL
+  ========================================================== */
 
   function openEditModal(user: User) {
     setEditingUser(user);
@@ -129,28 +239,54 @@ export default function UsersPage() {
       last_name: user.last_name ?? "",
       role: user.role,
       password: "",
+      company:
+        user.company !== null &&
+        user.company !== undefined
+          ? String(user.company)
+          : "",
     });
 
     setError("");
     setSuccess("");
+
     setShowModal(true);
   }
 
+  /* ==========================================================
+     CLOSE MODAL
+  ========================================================== */
+
   function closeModal() {
-    if (saving) return;
+    if (saving) {
+      return;
+    }
 
     setShowModal(false);
     setEditingUser(null);
 
-    setForm({
-      username: "",
-      email: "",
-      first_name: "",
-      last_name: "",
-      role: "CLIENT",
-      password: "",
-    });
+    resetForm();
   }
+
+  /* ==========================================================
+     ROLE CHANGE
+  ========================================================== */
+
+  function handleRoleChange(role: Role) {
+    setForm((current) => ({
+      ...current,
+      role,
+
+      // Company is only applicable to clients.
+      company:
+        role === "CLIENT"
+          ? current.company
+          : "",
+    }));
+  }
+
+  /* ==========================================================
+     SUBMIT
+  ========================================================== */
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -162,6 +298,10 @@ export default function UsersPage() {
     const first_name = form.first_name.trim();
     const last_name = form.last_name.trim();
 
+    /* --------------------------------------------------------
+       VALIDATION
+    -------------------------------------------------------- */
+
     if (!username) {
       setError("Username is required.");
       return;
@@ -172,10 +312,26 @@ export default function UsersPage() {
       return;
     }
 
-    if (!editingUser && !form.password) {
-      setError("Password is required when creating a user.");
+    if (!editingUser && !form.password.trim()) {
+      setError(
+        "Password is required when creating a user."
+      );
       return;
     }
+
+    if (
+      form.role === "CLIENT" &&
+      !form.company
+    ) {
+      setError(
+        "Please select a company for this client."
+      );
+      return;
+    }
+
+    /* --------------------------------------------------------
+       SAVE
+    -------------------------------------------------------- */
 
     try {
       setSaving(true);
@@ -192,39 +348,87 @@ export default function UsersPage() {
         role: form.role,
       };
 
+      /* ------------------------------------------------------
+         COMPANY
+
+         Clients receive a company ID.
+         Admins and technicians have no company assignment
+         through this form.
+      ------------------------------------------------------ */
+
+      if (form.role === "CLIENT") {
+        body.company = Number(form.company);
+      } else {
+        body.company = null;
+      }
+
+      /* ------------------------------------------------------
+         PASSWORD
+      ------------------------------------------------------ */
+
       if (!isEditing) {
         body.password = form.password;
       } else if (form.password.trim()) {
         body.password = form.password;
       }
 
+      /* ------------------------------------------------------
+         REQUEST
+      ------------------------------------------------------ */
+
       const response = await apiFetch(
         isEditing
           ? `/api/users/${editingUser!.id}/`
           : "/api/users/",
         {
-          method: isEditing ? "PATCH" : "POST",
+          method: isEditing
+            ? "PATCH"
+            : "POST",
+
           body: JSON.stringify(body),
         }
       );
 
+      /* ------------------------------------------------------
+         AUTH ERROR
+      ------------------------------------------------------ */
+
       if (response.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        localStorage.removeItem(
+          "refresh_token"
+        );
+
         window.location.href = "/login";
+
         return;
       }
 
-      const data = await response.json().catch(() => null);
+      const data = await response
+        .json()
+        .catch(() => null);
+
+      /* ------------------------------------------------------
+         API ERROR
+      ------------------------------------------------------ */
 
       if (!response.ok) {
         throw new Error(
           extractApiError(data) ||
             `Unable to ${
-              isEditing ? "update" : "create"
+              isEditing
+                ? "update"
+                : "create"
             } user.`
         );
       }
+
+      /* ------------------------------------------------------
+         SUCCESS
+      ------------------------------------------------------ */
 
       setSuccess(
         isEditing
@@ -232,7 +436,10 @@ export default function UsersPage() {
           : "User created successfully."
       );
 
-      closeModal();
+      setShowModal(false);
+      setEditingUser(null);
+      resetForm();
+
       await getUsers();
     } catch (err) {
       setError(
@@ -245,19 +452,19 @@ export default function UsersPage() {
     }
   }
 
+  /* ==========================================================
+     DELETE
+  ========================================================== */
+
   async function handleDelete(user: User) {
-    if (user.role === "ADMIN") {
-      const confirmed = window.confirm(
-        `Are you sure you want to delete admin "${user.username}"?`
-      );
+    const confirmed = window.confirm(
+      user.role === "ADMIN"
+        ? `Are you sure you want to delete admin "${user.username}"?`
+        : `Are you sure you want to delete "${user.username}"?`
+    );
 
-      if (!confirmed) return;
-    } else {
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${user.username}"?`
-      );
-
-      if (!confirmed) return;
+    if (!confirmed) {
+      return;
     }
 
     try {
@@ -271,14 +478,31 @@ export default function UsersPage() {
         }
       );
 
+      /* ------------------------------------------------------
+         AUTH ERROR
+      ------------------------------------------------------ */
+
       if (response.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        localStorage.removeItem(
+          "refresh_token"
+        );
+
         window.location.href = "/login";
+
         return;
       }
 
-      const data = await response.json().catch(() => null);
+      const data = await response
+        .json()
+        .catch(() => null);
+
+      /* ------------------------------------------------------
+         API ERROR
+      ------------------------------------------------------ */
 
       if (!response.ok) {
         throw new Error(
@@ -287,7 +511,9 @@ export default function UsersPage() {
         );
       }
 
-      setSuccess("User deleted successfully.");
+      setSuccess(
+        "User deleted successfully."
+      );
 
       await getUsers();
     } catch (err) {
@@ -299,10 +525,19 @@ export default function UsersPage() {
     }
   }
 
+  /* ==========================================================
+     RENDER
+  ========================================================== */
+
   return (
     <div className="space-y-8">
-      {/* Header */}
+
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+
         <div>
           <p className="text-sm font-medium text-blue-400">
             ADMINISTRATION
@@ -313,7 +548,8 @@ export default function UsersPage() {
           </h1>
 
           <p className="mt-2 text-slate-400">
-            Manage AssetHub administrators, technicians and clients.
+            Manage AssetHub administrators,
+            technicians and clients.
           </p>
         </div>
 
@@ -326,12 +562,19 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Feedback */}
+      {/* ======================================================
+          SUCCESS
+      ====================================================== */}
+
       {success && (
         <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-5 py-4 text-sm text-emerald-300">
           {success}
         </div>
       )}
+
+      {/* ======================================================
+          ERROR
+      ====================================================== */}
 
       {error && !showModal && (
         <div className="rounded-xl border border-red-900 bg-red-950/30 px-5 py-4 text-sm text-red-300">
@@ -339,8 +582,12 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Statistics */}
+      {/* ======================================================
+          STATISTICS
+      ====================================================== */}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
         <StatCard
           title="Total Users"
           value={users.length}
@@ -364,12 +611,21 @@ export default function UsersPage() {
           value={clients}
           description="Client accounts"
         />
+
       </div>
 
-      {/* Users */}
+      {/* ======================================================
+          USERS
+      ====================================================== */}
+
       <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-        {/* Toolbar */}
+
+        {/* ----------------------------------------------------
+            TOOLBAR
+        ---------------------------------------------------- */}
+
         <div className="flex flex-col gap-4 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
+
           <div>
             <h2 className="font-semibold text-white">
               Registered Users
@@ -389,15 +645,27 @@ export default function UsersPage() {
             placeholder="Search users..."
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 md:w-80"
           />
+
         </div>
 
-        {/* Loading */}
+        {/* ----------------------------------------------------
+            LOADING
+        ---------------------------------------------------- */}
+
         {loading ? (
           <div className="flex min-h-60 items-center justify-center">
+
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
+
           </div>
         ) : filteredUsers.length === 0 ? (
+
+          /* --------------------------------------------------
+             EMPTY
+          -------------------------------------------------- */
+
           <div className="p-12 text-center">
+
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl text-slate-500">
               ♙
             </div>
@@ -423,12 +691,22 @@ export default function UsersPage() {
                 Add User
               </button>
             )}
+
           </div>
+
         ) : (
+
+          /* --------------------------------------------------
+             TABLE
+          -------------------------------------------------- */
+
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+
+            <table className="w-full min-w-[1050px]">
+
               <thead>
                 <tr className="border-b border-slate-800 text-left">
+
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     User
                   </th>
@@ -442,17 +720,24 @@ export default function UsersPage() {
                   </th>
 
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Company
+                  </th>
+
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Status
                   </th>
 
                   <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Actions
                   </th>
+
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-800">
+
                 {filteredUsers.map((user) => {
+
                   const name =
                     `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() ||
                     user.username;
@@ -462,13 +747,21 @@ export default function UsersPage() {
                       key={user.id}
                       className="transition hover:bg-slate-800/30"
                     >
+
+                      {/* USER */}
+
                       <td className="px-6 py-5">
+
                         <div className="flex items-center gap-3">
+
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 font-semibold text-blue-400">
-                            {name.charAt(0).toUpperCase()}
+                            {name
+                              .charAt(0)
+                              .toUpperCase()}
                           </div>
 
                           <div>
+
                             <p className="font-medium text-white">
                               {name}
                             </p>
@@ -476,17 +769,58 @@ export default function UsersPage() {
                             <p className="mt-1 text-xs text-slate-500">
                               @{user.username}
                             </p>
+
                           </div>
+
                         </div>
+
                       </td>
+
+                      {/* EMAIL */}
 
                       <td className="px-6 py-5 text-sm text-slate-400">
                         {user.email}
                       </td>
 
+                      {/* ROLE */}
+
                       <td className="px-6 py-5">
-                        <RoleBadge role={user.role} />
+                        <RoleBadge
+                          role={user.role}
+                        />
                       </td>
+
+                      {/* COMPANY */}
+
+                      <td className="px-6 py-5">
+
+                        {user.role === "CLIENT" ? (
+                          user.company_name ? (
+                            <div>
+                              <p className="text-sm font-medium text-slate-200">
+                                {user.company_name}
+                              </p>
+
+                              {user.company && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Company #{user.company}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-amber-400">
+                              Not assigned
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-sm text-slate-600">
+                            —
+                          </span>
+                        )}
+
+                      </td>
+
+                      {/* STATUS */}
 
                       <td className="px-6 py-5">
                         <StatusBadge
@@ -494,8 +828,12 @@ export default function UsersPage() {
                         />
                       </td>
 
+                      {/* ACTIONS */}
+
                       <td className="px-6 py-5">
+
                         <div className="flex justify-end gap-2">
+
                           <button
                             type="button"
                             onClick={() =>
@@ -515,22 +853,39 @@ export default function UsersPage() {
                           >
                             Delete
                           </button>
+
                         </div>
+
                       </td>
+
                     </tr>
                   );
                 })}
+
               </tbody>
+
             </table>
+
           </div>
         )}
+
       </section>
 
-      {/* Modal */}
+      {/* ======================================================
+          CREATE / EDIT MODAL
+      ====================================================== */}
+
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+
+            {/* ------------------------------------------------
+                MODAL HEADER
+            ------------------------------------------------ */}
+
             <div className="border-b border-slate-800 p-6">
+
               <h2 className="text-xl font-semibold text-white">
                 {editingUser
                   ? "Edit User"
@@ -542,19 +897,30 @@ export default function UsersPage() {
                   ? "Update this user's account information."
                   : "Create a new AssetHub user account."}
               </p>
+
             </div>
+
+            {/* ------------------------------------------------
+                FORM
+            ------------------------------------------------ */}
 
             <form
               onSubmit={handleSubmit}
               className="space-y-5 p-6"
             >
+
+              {/* ERROR */}
+
               {error && (
                 <div className="rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
                   {error}
                 </div>
               )}
 
+              {/* FIRST / LAST NAME */}
+
               <div className="grid gap-4 sm:grid-cols-2">
+
                 <Input
                   label="First Name"
                   value={form.first_name}
@@ -576,7 +942,10 @@ export default function UsersPage() {
                     }))
                   }
                 />
+
               </div>
+
+              {/* USERNAME */}
 
               <Input
                 label="Username"
@@ -589,6 +958,8 @@ export default function UsersPage() {
                 }
                 required
               />
+
+              {/* EMAIL */}
 
               <Input
                 label="Email"
@@ -603,7 +974,10 @@ export default function UsersPage() {
                 required
               />
 
+              {/* ROLE */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-medium text-slate-300">
                   Role
                 </label>
@@ -611,20 +985,99 @@ export default function UsersPage() {
                 <select
                   value={form.role}
                   onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      role: event.target.value as UserForm["role"],
-                    }))
+                    handleRoleChange(
+                      event.target.value as Role
+                    )
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
                 >
-                  <option value="CLIENT">Client</option>
+
+                  <option value="CLIENT">
+                    Client
+                  </option>
+
                   <option value="TECHNICIAN">
                     Technician
                   </option>
-                  <option value="ADMIN">Administrator</option>
+
+                  <option value="ADMIN">
+                    Administrator
+                  </option>
+
                 </select>
+
               </div>
+
+              {/* =================================================
+                  COMPANY
+
+                  ONLY CLIENTS
+              ================================================= */}
+
+              {form.role === "CLIENT" && (
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Company
+                  </label>
+
+                  <select
+                    value={form.company}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        company:
+                          event.target.value,
+                      }))
+                    }
+                    required
+                    disabled={
+                      companiesLoading
+                    }
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+
+                    <option value="">
+                      {companiesLoading
+                        ? "Loading companies..."
+                        : "Select a company"}
+                    </option>
+
+                    {companies.map(
+                      (company) => (
+                        <option
+                          key={company.id}
+                          value={company.id}
+                        >
+                          {company.name}
+                        </option>
+                      )
+                    )}
+
+                  </select>
+
+                  {/* COMPANY STATUS */}
+
+                  {companiesLoading && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Loading available
+                      companies...
+                    </p>
+                  )}
+
+                  {!companiesLoading &&
+                    companies.length === 0 && (
+                      <p className="mt-2 text-xs text-amber-400">
+                        No companies are
+                        available. Create a
+                        company first.
+                      </p>
+                    )}
+
+                </div>
+              )}
+
+              {/* PASSWORD */}
 
               <Input
                 label={
@@ -643,7 +1096,10 @@ export default function UsersPage() {
                 required={!editingUser}
               />
 
+              {/* ACTIONS */}
+
               <div className="flex justify-end gap-3 pt-2">
+
                 <button
                   type="button"
                   onClick={closeModal}
@@ -655,7 +1111,11 @@ export default function UsersPage() {
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    (form.role === "CLIENT" &&
+                      !form.company)
+                  }
                   className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
@@ -664,14 +1124,23 @@ export default function UsersPage() {
                       ? "Save Changes"
                       : "Create User"}
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
       )}
+
     </div>
   );
 }
+
+/* ============================================================
+   INPUT
+============================================================ */
 
 function Input({
   label,
@@ -688,6 +1157,7 @@ function Input({
 }) {
   return (
     <div>
+
       <label className="mb-2 block text-sm font-medium text-slate-300">
         {label}
       </label>
@@ -701,9 +1171,14 @@ function Input({
         required={required}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
       />
+
     </div>
   );
 }
+
+/* ============================================================
+   STAT CARD
+============================================================ */
 
 function StatCard({
   title,
@@ -716,6 +1191,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+
       <p className="text-sm text-slate-400">
         {title}
       </p>
@@ -727,19 +1203,29 @@ function StatCard({
       <p className="mt-3 text-xs text-slate-500">
         {description}
       </p>
+
     </div>
   );
 }
 
+/* ============================================================
+   ROLE BADGE
+============================================================ */
+
 function RoleBadge({
   role,
 }: {
-  role: User["role"];
+  role: Role;
 }) {
-  const styles = {
-    ADMIN: "bg-purple-500/10 text-purple-400",
-    TECHNICIAN: "bg-blue-500/10 text-blue-400",
-    CLIENT: "bg-emerald-500/10 text-emerald-400",
+  const styles: Record<Role, string> = {
+    ADMIN:
+      "bg-purple-500/10 text-purple-400",
+
+    TECHNICIAN:
+      "bg-blue-500/10 text-blue-400",
+
+    CLIENT:
+      "bg-emerald-500/10 text-emerald-400",
   };
 
   return (
@@ -750,6 +1236,10 @@ function RoleBadge({
     </span>
   );
 }
+
+/* ============================================================
+   STATUS BADGE
+============================================================ */
 
 function StatusBadge({
   active,
@@ -764,10 +1254,16 @@ function StatusBadge({
           : "bg-red-500/10 text-red-400"
       }`}
     >
-      {active ? "ACTIVE" : "INACTIVE"}
+      {active
+        ? "ACTIVE"
+        : "INACTIVE"}
     </span>
   );
 }
+
+/* ============================================================
+   API ERROR HANDLER
+============================================================ */
 
 function extractApiError(
   data: unknown
@@ -776,22 +1272,37 @@ function extractApiError(
     return null;
   }
 
-  const object = data as Record<string, unknown>;
+  const object =
+    data as Record<string, unknown>;
 
-  if (typeof object.detail === "string") {
+  /* ----------------------------------------------------------
+     detail
+  ---------------------------------------------------------- */
+
+  if (
+    typeof object.detail === "string"
+  ) {
     return object.detail;
   }
 
-  for (const value of Object.values(object)) {
+  /* ----------------------------------------------------------
+     Common DRF validation errors
+  ---------------------------------------------------------- */
+
+  for (const [
+    field,
+    value,
+  ] of Object.entries(object)) {
+
     if (typeof value === "string") {
-      return value;
+      return `${field}: ${value}`;
     }
 
     if (
       Array.isArray(value) &&
       typeof value[0] === "string"
     ) {
-      return value[0];
+      return `${field}: ${value[0]}`;
     }
   }
 
