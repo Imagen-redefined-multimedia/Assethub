@@ -112,7 +112,7 @@ const STATUS_OPTIONS: WorkOrderStatus[] = [
  *
  * Expected backend architecture:
  *
- * PATCH /api/work-orders/{id}/response/
+ * PATCH /api/work-orders/{id}/respond/
  *
  * Example payload:
  *
@@ -122,7 +122,7 @@ const STATUS_OPTIONS: WorkOrderStatus[] = [
  * }
  */
 const WORK_ORDER_RESPONSE_URL = (id: number) =>
-  `/api/work-orders/${id}/response/`;
+  `/api/work-orders/${id}/respond/`;
 
 /* ============================================================
    PAGE
