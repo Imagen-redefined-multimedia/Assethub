@@ -720,12 +720,6 @@ export default function UsersPage() {
                             <p className="text-sm font-medium text-slate-200">
                               {user.company_name}
                             </p>
-
-                            {user.company_id && (
-                              <p className="mt-1 text-xs text-slate-500">
-                                Company #{user.company_id}
-                              </p>
-                            )}
                           </div>
                         ) : (
                           <span className="text-sm text-slate-600">
