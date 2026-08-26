@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import { apiFetch, apiJson } from "@/lib/api";
+import { apiFetch, apiJson, logout } from "@/lib/api";
 
 /* ============================================================
    TYPES
@@ -26,6 +26,8 @@ type ClientResponse =
   | "PENDING"
   | "ACCEPTED"
   | "REJECTED";
+
+type ResponseAction = "ACCEPT" | "REJECT";
 
 type CurrentUser = {
   id: number;
@@ -56,9 +58,12 @@ type WorkOrder = {
 
   status: WorkOrderStatus;
 
-  client_response: ClientResponse | null;
-  client_response_comment: string | null;
-  client_responded_at: string | null;
+  /*
+   * Added by your new Django migration.
+   */
+  client_response?: ClientResponse | null;
+  client_response_comment?: string | null;
+  client_responded_at?: string | null;
 
   created_at: string;
   updated_at: string;
@@ -80,8 +85,10 @@ type Asset = {
   id: number;
   company: number | null;
   company_name: string | null;
+
   client: number;
   client_username: string;
+
   name: string;
   serial_number: string;
   description: string;
@@ -91,8 +98,10 @@ type WorkOrderForm = {
   company: number | null;
   client: number | null;
   asset: number | null;
+
   title: string;
   description: string;
+
   status: WorkOrderStatus;
 };
 
@@ -108,24 +117,16 @@ const STATUS_OPTIONS: WorkOrderStatus[] = [
 ];
 
 /*
- * Change this only if your Django URL is different.
- *
- * Expected backend architecture:
- *
- * PATCH /api/work-orders/{id}/respond/
- *
- * Example payload:
- *
- * {
- *   "client_response": "ACCEPTED",
- *   "client_response_comment": "Approved."
- * }
+ * These values correspond to the WorkOrderResponseSerializer
+ * action field.
  */
-const WORK_ORDER_RESPONSE_URL = (id: number) =>
-  `/api/work-orders/${id}/respond/`;
+const RESPONSE_ACTIONS: ResponseAction[] = [
+  "ACCEPT",
+  "REJECT",
+];
 
 /* ============================================================
-   PAGE
+   MAIN PAGE
 ============================================================ */
 
 export default function WorkOrdersPage() {
@@ -152,9 +153,6 @@ export default function WorkOrdersPage() {
   const [saving, setSaving] =
     useState(false);
 
-  const [responding, setResponding] =
-    useState(false);
-
   const [error, setError] =
     useState("");
 
@@ -167,9 +165,18 @@ export default function WorkOrdersPage() {
   const [editingOrder, setEditingOrder] =
     useState<WorkOrder | null>(null);
 
+  /*
+   * Client response state.
+   */
+  const [responseAction, setResponseAction] =
+    useState<ResponseAction>("ACCEPT");
+
   const [responseComment, setResponseComment] =
     useState("");
 
+  /*
+   * Admin form.
+   */
   const [form, setForm] =
     useState<WorkOrderForm>({
       company: null,
@@ -180,19 +187,15 @@ export default function WorkOrdersPage() {
       status: "PENDING",
     });
 
-  const isAdmin = user?.role === "ADMIN";
-  const isClient = user?.role === "CLIENT";
+  const isAdmin =
+    user?.role === "ADMIN";
 
-  /* ==========================================================
-     AUTH
-  ========================================================== */
+  const isClient =
+    user?.role === "CLIENT";
 
-  function logout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-
-    window.location.href = "/login";
-  }
+  /* ============================================================
+     USER
+  ============================================================ */
 
   async function loadUser(): Promise<CurrentUser> {
     const response =
@@ -219,9 +222,9 @@ export default function WorkOrdersPage() {
     return data;
   }
 
-  /* ==========================================================
+  /* ============================================================
      LOAD DATA
-  ========================================================== */
+  ============================================================ */
 
   async function loadData(
     currentUser: CurrentUser
@@ -233,50 +236,45 @@ export default function WorkOrdersPage() {
       /*
        * ADMIN
        *
-       * Admin needs:
-       * - work orders
-       * - clients
-       * - assets
+       * Admin can see:
+       * - Work orders
+       * - Users
+       * - Assets
        */
-
-      if (currentUser.role === "ADMIN") {
+      if (
+        currentUser.role === "ADMIN"
+      ) {
         const [
           ordersData,
           usersData,
           assetsData,
         ] = await Promise.all([
           apiJson<
-            WorkOrder[] | { results: WorkOrder[] }
+            WorkOrder[] |
+            { results: WorkOrder[] }
           >("/api/work-orders/"),
 
           apiJson<
-            Client[] | { results: Client[] }
+            Client[] |
+            { results: Client[] }
           >("/api/users/"),
 
           apiJson<
-            Asset[] | { results: Asset[] }
+            Asset[] |
+            { results: Asset[] }
           >("/api/assets/"),
         ]);
 
-        const orders = Array.isArray(
-          ordersData
-        )
-          ? ordersData
-          : ordersData.results ?? [];
+        setWorkOrders(
+          Array.isArray(ordersData)
+            ? ordersData
+            : ordersData.results ?? []
+        );
 
-        const allUsers = Array.isArray(
-          usersData
-        )
-          ? usersData
-          : usersData.results ?? [];
-
-        const allAssets = Array.isArray(
-          assetsData
-        )
-          ? assetsData
-          : assetsData.results ?? [];
-
-        setWorkOrders(orders);
+        const allUsers =
+          Array.isArray(usersData)
+            ? usersData
+            : usersData.results ?? [];
 
         setClients(
           allUsers.filter(
@@ -285,7 +283,11 @@ export default function WorkOrdersPage() {
           )
         );
 
-        setAssets(allAssets);
+        setAssets(
+          Array.isArray(assetsData)
+            ? assetsData
+            : assetsData.results ?? []
+        );
 
         return;
       }
@@ -293,27 +295,23 @@ export default function WorkOrdersPage() {
       /*
        * CLIENT
        *
-       * Deliberately request only work orders.
-       *
-       * This avoids unnecessary 403 requests
-       * against /api/users/ and /api/assets/.
+       * Client only needs work orders.
        */
-
-      if (currentUser.role === "CLIENT") {
+      if (
+        currentUser.role === "CLIENT"
+      ) {
         const ordersData =
           await apiJson<
-            WorkOrder[] | {
-              results: WorkOrder[];
-            }
+            WorkOrder[] |
+            { results: WorkOrder[] }
           >("/api/work-orders/");
 
-        const orders = Array.isArray(
-          ordersData
-        )
-          ? ordersData
-          : ordersData.results ?? [];
+        setWorkOrders(
+          Array.isArray(ordersData)
+            ? ordersData
+            : ordersData.results ?? []
+        );
 
-        setWorkOrders(orders);
         setClients([]);
         setAssets([]);
 
@@ -322,13 +320,9 @@ export default function WorkOrdersPage() {
 
       /*
        * TECHNICIAN
-       *
-       * Technicians belong in maintenance.
        */
-
       if (
-        currentUser.role ===
-        "TECHNICIAN"
+        currentUser.role === "TECHNICIAN"
       ) {
         window.location.href =
           "/maintenance";
@@ -346,9 +340,9 @@ export default function WorkOrdersPage() {
     }
   }
 
-  /* ==========================================================
+  /* ============================================================
      INITIALISE
-  ========================================================== */
+  ============================================================ */
 
   useEffect(() => {
     async function initialise() {
@@ -366,7 +360,9 @@ export default function WorkOrdersPage() {
         const currentUser =
           await loadUser();
 
-        await loadData(currentUser);
+        await loadData(
+          currentUser
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -381,51 +377,55 @@ export default function WorkOrdersPage() {
     initialise();
   }, []);
 
-  /* ==========================================================
+  /* ============================================================
      FILTERING
-  ========================================================== */
+  ============================================================ */
 
-  const filteredOrders = useMemo(() => {
-    const query =
-      search.trim().toLowerCase();
+  const filteredOrders =
+    useMemo(() => {
+      const query =
+        search
+          .trim()
+          .toLowerCase();
 
-    return workOrders.filter((order) => {
-      const searchableText = [
-        order.title,
-        order.description,
-        order.company_name ?? "",
-        order.client_username,
-        order.asset_name,
-        order.status,
-        order.client_response ?? "",
-        order.client_response_comment ?? "",
-        String(order.id),
-      ]
-        .join(" ")
-        .toLowerCase();
+      return workOrders.filter(
+        (order) => {
+          const matchesSearch =
+            !query ||
+            [
+              order.title,
+              order.description,
+              order.company_name ?? "",
+              order.client_username,
+              order.asset_name,
+              order.status,
+              order.client_response ?? "",
+              String(order.id),
+            ]
+              .join(" ")
+              .toLowerCase()
+              .includes(query);
 
-      const matchesSearch =
-        !query ||
-        searchableText.includes(query);
+          const matchesStatus =
+            statusFilter === "ALL" ||
+            order.status ===
+              statusFilter;
 
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        order.status === statusFilter;
-
-      return (
-        matchesSearch &&
-        matchesStatus
+          return (
+            matchesSearch &&
+            matchesStatus
+          );
+        }
       );
-    });
-  }, [
-    workOrders,
-    search,
-    statusFilter,
-  ]);
+    }, [
+      workOrders,
+      search,
+      statusFilter,
+    ]);
 
-  /* ==========================================================
+  /* ============================================================
      STATISTICS
-  ========================================================== */
+  ============================================================ */
 
   const pendingCount =
     workOrders.filter(
@@ -460,23 +460,9 @@ export default function WorkOrdersPage() {
           "PENDING"
     ).length;
 
-  const acceptedCount =
-    workOrders.filter(
-      (order) =>
-        order.client_response ===
-        "ACCEPTED"
-    ).length;
-
-  const rejectedCount =
-    workOrders.filter(
-      (order) =>
-        order.client_response ===
-        "REJECTED"
-    ).length;
-
-  /* ==========================================================
-     FORM
-  ========================================================== */
+  /* ============================================================
+     ADMIN FORM
+  ============================================================ */
 
   function resetForm() {
     setForm({
@@ -489,14 +475,21 @@ export default function WorkOrdersPage() {
     });
   }
 
+  function resetResponseForm() {
+    setResponseAction("ACCEPT");
+    setResponseComment("");
+  }
+
   function openCreateModal() {
     if (!isAdmin) return;
 
     setEditingOrder(null);
     resetForm();
-    setResponseComment("");
+    resetResponseForm();
+
     setError("");
     setSuccess("");
+
     setShowModal(true);
   }
 
@@ -504,11 +497,6 @@ export default function WorkOrdersPage() {
     order: WorkOrder
   ) {
     setEditingOrder(order);
-
-    setResponseComment(
-      order.client_response_comment ??
-        ""
-    );
 
     setForm({
       company: order.company,
@@ -519,28 +507,27 @@ export default function WorkOrdersPage() {
       status: order.status,
     });
 
+    resetResponseForm();
+
     setError("");
     setSuccess("");
+
     setShowModal(true);
   }
 
   function closeModal() {
-    if (
-      saving ||
-      responding
-    ) {
-      return;
-    }
+    if (saving) return;
 
     setShowModal(false);
     setEditingOrder(null);
-    setResponseComment("");
+
     resetForm();
+    resetResponseForm();
   }
 
-  /* ==========================================================
-     CLIENT / ASSET SELECTION
-  ========================================================== */
+  /* ============================================================
+     CLIENT CHANGE
+  ============================================================ */
 
   function handleClientChange(
     clientId: number | null
@@ -553,32 +540,42 @@ export default function WorkOrdersPage() {
 
     setForm((current) => ({
       ...current,
+
       client: clientId,
+
       company:
-        client?.company_id ?? null,
+        client?.company_id ??
+        null,
+
       asset: null,
     }));
   }
 
-  const availableAssets = useMemo(() => {
-    if (!form.client) {
-      return [];
-    }
+  /* ============================================================
+     AVAILABLE ASSETS
+  ============================================================ */
 
-    return assets.filter(
-      (asset) =>
-        asset.client === form.client
-    );
-  }, [
-    assets,
-    form.client,
-  ]);
+  const availableAssets =
+    useMemo(() => {
+      if (!form.client) {
+        return [];
+      }
 
-  /* ==========================================================
-     ADMIN CREATE / UPDATE
-  ========================================================== */
+      return assets.filter(
+        (asset) =>
+          asset.client ===
+          form.client
+      );
+    }, [
+      assets,
+      form.client,
+    ]);
 
-  async function handleSubmit(
+  /* ============================================================
+     ADMIN CREATE / EDIT
+  ============================================================ */
+
+  async function handleAdminSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
@@ -645,11 +642,15 @@ export default function WorkOrdersPage() {
             method: isEditing
               ? "PATCH"
               : "POST",
-            body: JSON.stringify(body),
+
+            body:
+              JSON.stringify(body),
           }
         );
 
-      if (response.status === 401) {
+      if (
+        response.status === 401
+      ) {
         logout();
         return;
       }
@@ -676,7 +677,10 @@ export default function WorkOrdersPage() {
           : "Work order created successfully."
       );
 
-      closeModal();
+      setShowModal(false);
+      setEditingOrder(null);
+
+      resetForm();
 
       if (user) {
         await loadData(user);
@@ -692,37 +696,24 @@ export default function WorkOrdersPage() {
     }
   }
 
-  /* ==========================================================
-     CLIENT RESPONSE
-  ========================================================== */
+  /* ============================================================
+     CLIENT ACCEPT / REJECT
+  ============================================================ */
 
   async function handleClientResponse(
-    order: WorkOrder,
-    response:
-      | "ACCEPTED"
-      | "REJECTED"
+    event: FormEvent<HTMLFormElement>
   ) {
-    if (!isClient) {
-      setError(
-        "Only clients can respond to work orders."
-      );
-      return;
-    }
+    event.preventDefault();
 
     if (
-      order.client_response ===
-        "ACCEPTED" ||
-      order.client_response ===
-        "REJECTED"
+      !isClient ||
+      !editingOrder
     ) {
-      setError(
-        "This work order has already received a response."
-      );
       return;
     }
 
     if (
-      response === "REJECTED" &&
+      responseAction === "REJECT" &&
       !responseComment.trim()
     ) {
       setError(
@@ -732,40 +723,53 @@ export default function WorkOrdersPage() {
     }
 
     try {
-      setResponding(true);
+      setSaving(true);
       setError("");
       setSuccess("");
 
-      const apiResponse =
+      /*
+       * IMPORTANT:
+       *
+       * This endpoint uses POST.
+       *
+       * DO NOT use PATCH here.
+       *
+       * The serializer expects:
+       *
+       * {
+       *   action: "ACCEPT" | "REJECT",
+       *   comment: "..."
+       * }
+       */
+      const response =
         await apiFetch(
-          WORK_ORDER_RESPONSE_URL(
-            order.id
-          ),
+          `/api/work-orders/${editingOrder.id}/respond/`,
           {
             method: "POST",
-            body: JSON.stringify({
-              client_response:
-                response,
 
-              client_response_comment:
+            body: JSON.stringify({
+              action:
+                responseAction,
+
+              comment:
                 responseComment.trim(),
             }),
           }
         );
 
       if (
-        apiResponse.status === 401
+        response.status === 401
       ) {
         logout();
         return;
       }
 
       const data =
-        await apiResponse
+        await response
           .json()
           .catch(() => null);
 
-      if (!apiResponse.ok) {
+      if (!response.ok) {
         throw new Error(
           extractApiError(data) ||
             "Unable to submit your response."
@@ -773,33 +777,33 @@ export default function WorkOrdersPage() {
       }
 
       setSuccess(
-        response === "ACCEPTED"
+        responseAction === "ACCEPT"
           ? "Work order accepted successfully."
           : "Work order rejected successfully."
       );
 
-      setResponseComment("");
+      setShowModal(false);
+      setEditingOrder(null);
+
+      resetResponseForm();
 
       if (user) {
         await loadData(user);
       }
-
-      setShowModal(false);
-      setEditingOrder(null);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to submit response."
+          : "Unable to submit your response."
       );
     } finally {
-      setResponding(false);
+      setSaving(false);
     }
   }
 
-  /* ==========================================================
+  /* ============================================================
      DELETE
-  ========================================================== */
+  ============================================================ */
 
   async function handleDelete(
     order: WorkOrder
@@ -816,9 +820,7 @@ export default function WorkOrdersPage() {
         `Are you sure you want to delete work order #${order.id}?`
       );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       setError("");
@@ -832,7 +834,9 @@ export default function WorkOrdersPage() {
           }
         );
 
-      if (response.status === 401) {
+      if (
+        response.status === 401
+      ) {
         logout();
         return;
       }
@@ -865,25 +869,25 @@ export default function WorkOrdersPage() {
     }
   }
 
-  /* ==========================================================
-     INITIAL LOADING
-  ========================================================== */
+  /* ============================================================
+     LOADING
+  ============================================================ */
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
       </div>
     );
   }
 
-  /* ==========================================================
+  /* ============================================================
      AUTH ERROR
-  ========================================================== */
+  ============================================================ */
 
   if (error && !user) {
     return (
-      <div className="rounded-2xl border border-red-900 bg-red-950/30 p-6">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-red-900 bg-red-950/30 p-6">
         <h2 className="font-semibold text-red-400">
           Work Orders Error
         </h2>
@@ -905,40 +909,42 @@ export default function WorkOrdersPage() {
     );
   }
 
-  /* ==========================================================
-     RENDER
-  ========================================================== */
+  /* ============================================================
+     PAGE
+  ============================================================ */
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* ======================================================
           HEADER
       ====================================================== */}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-blue-400">
+          <p className="text-xs font-semibold tracking-widest text-blue-400 sm:text-sm">
             {isAdmin
               ? "OPERATIONS"
               : "CLIENT PORTAL"}
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-white">
+          <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">
             Work Orders
           </h1>
 
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
             {isAdmin
               ? "Create, track and manage maintenance work orders across your client assets."
-              : "Review maintenance work orders and respond to requests associated with your assets."}
+              : "Review maintenance work orders associated with your assets and respond to requests."}
           </p>
         </div>
 
         {isAdmin && (
           <button
             type="button"
-            onClick={openCreateModal}
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+            onClick={
+              openCreateModal
+            }
+            className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 sm:w-auto"
           >
             + Create Work Order
           </button>
@@ -950,13 +956,13 @@ export default function WorkOrdersPage() {
       ====================================================== */}
 
       {success && (
-        <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-5 py-4 text-sm text-emerald-300">
+        <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300 sm:px-5">
           {success}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-900 bg-red-950/30 px-5 py-4 text-sm text-red-300">
+        <div className="rounded-xl border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300 sm:px-5">
           {error}
         </div>
       )}
@@ -966,143 +972,184 @@ export default function WorkOrdersPage() {
       ====================================================== */}
 
       <div
-        className={`grid gap-4 ${
+        className={`grid gap-3 sm:gap-4 ${
           isAdmin
-            ? "sm:grid-cols-2 xl:grid-cols-5"
-            : "sm:grid-cols-2 lg:grid-cols-4"
+            ? "grid-cols-2 xl:grid-cols-5"
+            : "grid-cols-2 lg:grid-cols-4"
         }`}
       >
         <StatCard
           title="Total"
-          value={workOrders.length}
+          value={
+            workOrders.length
+          }
           description="All work orders"
         />
 
         <StatCard
           title="Pending"
-          value={pendingCount}
+          value={
+            pendingCount
+          }
           description="Awaiting action"
         />
 
         <StatCard
           title="In Progress"
-          value={inProgressCount}
+          value={
+            inProgressCount
+          }
           description="Currently being worked on"
         />
 
         <StatCard
           title="Completed"
-          value={completedCount}
+          value={
+            completedCount
+          }
           description="Successfully completed"
         />
 
         {isAdmin && (
           <StatCard
-            title="Client Responses"
+            title="Cancelled"
             value={
-              acceptedCount +
-              rejectedCount
+              cancelledCount
             }
-            description={`${awaitingResponseCount} awaiting response`}
-          />
-        )}
-
-        {!isAdmin && (
-          <StatCard
-            title="Awaiting Response"
-            value={awaitingResponseCount}
-            description="Requires your decision"
+            description="Cancelled orders"
           />
         )}
       </div>
 
       {/* ======================================================
-          WORK ORDER REGISTER
+          CLIENT RESPONSE SUMMARY
+      ====================================================== */}
+
+      {isClient &&
+        awaitingResponseCount > 0 && (
+          <div className="rounded-2xl border border-amber-900/60 bg-amber-950/20 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-amber-300">
+                  Action required
+                </p>
+
+                <p className="mt-1 text-sm text-amber-400/80">
+                  You have{" "}
+                  {awaitingResponseCount}{" "}
+                  work order
+                  {awaitingResponseCount !==
+                  1
+                    ? "s"
+                    : ""}{" "}
+                  awaiting your response.
+                </p>
+              </div>
+
+              <span className="w-fit rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
+                {awaitingResponseCount}{" "}
+                pending
+              </span>
+            </div>
+          </div>
+        )}
+
+      {/* ======================================================
+          WORK ORDERS
       ====================================================== */}
 
       <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
         {/* Toolbar */}
 
-        <div className="flex flex-col gap-4 border-b border-slate-800 p-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="font-semibold text-white">
-              {isAdmin
-                ? "Work Order Register"
-                : "My Work Orders"}
-            </h2>
+        <div className="border-b border-slate-800 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="font-semibold text-white">
+                {isAdmin
+                  ? "Work Order Register"
+                  : "My Work Orders"}
+              </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
-              {isAdmin
-                ? "View and manage maintenance requests."
-                : "Review and respond to maintenance requests for your assets."}
-            </p>
-          </div>
+              <p className="mt-1 text-sm text-slate-500">
+                {isAdmin
+                  ? "View and manage maintenance requests."
+                  : "Review and respond to maintenance requests."}
+              </p>
+            </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="search"
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Search work orders..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-72"
-            />
+            <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+                placeholder="Search work orders..."
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 sm:w-72"
+              />
 
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target.value as
-                    | "ALL"
-                    | WorkOrderStatus
-                )
-              }
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-            >
-              <option value="ALL">
-                All Statuses
-              </option>
+              <select
+                value={
+                  statusFilter
+                }
+                onChange={(event) =>
+                  setStatusFilter(
+                    event.target.value as
+                      | "ALL"
+                      | WorkOrderStatus
+                  )
+                }
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 sm:w-48"
+              >
+                <option value="ALL">
+                  All Statuses
+                </option>
 
-              <option value="PENDING">
-                Pending
-              </option>
+                <option value="PENDING">
+                  Pending
+                </option>
 
-              <option value="IN_PROGRESS">
-                In Progress
-              </option>
+                <option value="IN_PROGRESS">
+                  In Progress
+                </option>
 
-              <option value="COMPLETED">
-                Completed
-              </option>
+                <option value="COMPLETED">
+                  Completed
+                </option>
 
-              <option value="CANCELLED">
-                Cancelled
-              </option>
-            </select>
+                <option value="CANCELLED">
+                  Cancelled
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Empty state */}
+        {/* ====================================================
+            EMPTY
+        ==================================================== */}
 
-        {filteredOrders.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl text-slate-500">
+        {filteredOrders.length ===
+        0 ? (
+          <div className="p-8 text-center sm:p-12">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-xl font-bold text-slate-500">
               W
             </div>
 
             <h3 className="mt-4 font-semibold text-white">
               {search ||
-              statusFilter !== "ALL"
+              statusFilter !==
+                "ALL"
                 ? "No work orders found"
                 : "No work orders yet"}
             </h3>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
               {search ||
-              statusFilter !== "ALL"
+              statusFilter !==
+                "ALL"
                 ? "Try changing your search or filter."
                 : isAdmin
                   ? "Create your first work order to get started."
@@ -1125,179 +1172,168 @@ export default function WorkOrdersPage() {
               )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px]">
-              <thead>
-                <tr className="border-b border-slate-800 text-left">
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Work Order
-                  </th>
+          <>
+            {/* ==================================================
+                DESKTOP TABLE
+            ================================================== */}
 
-                  {isAdmin && (
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Company
-                    </th>
-                  )}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[1000px]">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left">
+                    <TableHeader>
+                      Work Order
+                    </TableHeader>
 
-                  {isAdmin && (
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Client
-                    </th>
-                  )}
+                    {isAdmin && (
+                      <TableHeader>
+                        Company
+                      </TableHeader>
+                    )}
 
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Asset
-                  </th>
+                    {isAdmin && (
+                      <TableHeader>
+                        Client
+                      </TableHeader>
+                    )}
 
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Status
-                  </th>
+                    <TableHeader>
+                      Asset
+                    </TableHeader>
 
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Client Response
-                  </th>
+                    <TableHeader>
+                      Status
+                    </TableHeader>
 
-                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
+                    {isClient && (
+                      <TableHeader>
+                        Response
+                      </TableHeader>
+                    )}
 
-              <tbody className="divide-y divide-slate-800">
-                {filteredOrders.map(
-                  (order) => (
-                    <tr
-                      key={order.id}
-                      className="transition hover:bg-slate-800/30"
-                    >
-                      {/* Work Order */}
+                    <TableHeader align="right">
+                      Actions
+                    </TableHeader>
+                  </tr>
+                </thead>
 
-                      <td className="px-6 py-5">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">
-                            #{order.id}
-                          </div>
+                <tbody className="divide-y divide-slate-800">
+                  {filteredOrders.map(
+                    (order) => (
+                      <tr
+                        key={
+                          order.id
+                        }
+                        className="transition hover:bg-slate-800/30"
+                      >
+                        <td className="px-6 py-5">
+                          <WorkOrderIdentity
+                            order={order}
+                          />
+                        </td>
 
-                          <div>
-                            <p className="font-medium text-white">
-                              {order.title}
+                        {isAdmin && (
+                          <td className="px-6 py-5">
+                            <p className="text-sm font-medium text-slate-300">
+                              {order.company_name ||
+                                "No company"}
                             </p>
+                          </td>
+                        )}
 
-                            <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
+                        {isAdmin && (
+                          <td className="px-6 py-5">
+                            <p className="text-sm text-slate-300">
                               {
-                                order.description
+                                order.client_username
                               }
                             </p>
+                          </td>
+                        )}
 
-                            <p className="mt-2 text-xs text-slate-600">
-                              {formatDate(
-                                order.created_at
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Company */}
-
-                      {isAdmin && (
                         <td className="px-6 py-5">
                           <p className="text-sm font-medium text-slate-300">
-                            {order.company_name ||
-                              "No company"}
-                          </p>
-                        </td>
-                      )}
-
-                      {/* Client */}
-
-                      {isAdmin && (
-                        <td className="px-6 py-5">
-                          <p className="text-sm text-slate-300">
                             {
-                              order.client_username
+                              order.asset_name
                             }
                           </p>
                         </td>
-                      )}
 
-                      {/* Asset */}
-
-                      <td className="px-6 py-5">
-                        <p className="text-sm font-medium text-slate-300">
-                          {
-                            order.asset_name
-                          }
-                        </p>
-                      </td>
-
-                      {/* Status */}
-
-                      <td className="px-6 py-5">
-                        <StatusBadge
-                          status={
-                            order.status
-                          }
-                        />
-                      </td>
-
-                      {/* Client Response */}
-
-                      <td className="px-6 py-5">
-                        <ClientResponseBadge
-                          response={
-                            order.client_response
-                          }
-                        />
-
-                        {order.client_responded_at && (
-                          <p className="mt-2 text-xs text-slate-600">
-                            {formatDate(
-                              order.client_responded_at
-                            )}
-                          </p>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-
-                      <td className="px-6 py-5">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openEditModal(
-                                order
-                              )
+                        <td className="px-6 py-5">
+                          <StatusBadge
+                            status={
+                              order.status
                             }
-                            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
-                          >
-                            {isClient
-                              ? "Review"
-                              : "View / Edit"}
-                          </button>
+                          />
+                        </td>
 
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDelete(
-                                  order
-                                )
+                        {isClient && (
+                          <td className="px-6 py-5">
+                            <ResponseBadge
+                              response={
+                                order.client_response
                               }
-                              className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
+                            />
+                          </td>
+                        )}
+
+                        <td className="px-6 py-5">
+                          <OrderActions
+                            order={
+                              order
+                            }
+                            isAdmin={
+                              isAdmin
+                            }
+                            isClient={
+                              isClient
+                            }
+                            onEdit={
+                              openEditModal
+                            }
+                            onDelete={
+                              handleDelete
+                            }
+                          />
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ==================================================
+                MOBILE / TABLET CARDS
+            ================================================== */}
+
+            <div className="grid gap-3 p-3 sm:p-4 lg:hidden">
+              {filteredOrders.map(
+                (order) => (
+                  <WorkOrderCard
+                    key={
+                      order.id
+                    }
+                    order={
+                      order
+                    }
+                    isAdmin={
+                      isAdmin
+                    }
+                    isClient={
+                      isClient
+                    }
+                    onEdit={
+                      openEditModal
+                    }
+                    onDelete={
+                      handleDelete
+                    }
+                  />
+                )
+              )}
+            </div>
+          </>
         )}
       </section>
 
@@ -1305,494 +1341,975 @@ export default function WorkOrdersPage() {
           MODAL
       ====================================================== */}
 
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
-            {/* Modal Header */}
+      {showModal &&
+        editingOrder &&
+        isClient && (
+          <ClientResponseModal
+            order={
+              editingOrder
+            }
+            action={
+              responseAction
+            }
+            comment={
+              responseComment
+            }
+            saving={
+              saving
+            }
+            onActionChange={
+              setResponseAction
+            }
+            onCommentChange={
+              setResponseComment
+            }
+            onSubmit={
+              handleClientResponse
+            }
+            onClose={
+              closeModal
+            }
+            error={
+              error
+            }
+          />
+        )}
 
-            <div className="border-b border-slate-800 p-6">
-              <h2 className="text-xl font-semibold text-white">
-                {editingOrder
-                  ? isAdmin
-                    ? "Edit Work Order"
-                    : "Review Work Order"
-                  : "Create Work Order"}
-              </h2>
+      {showModal &&
+        (isAdmin ||
+          !editingOrder) && (
+          <AdminWorkOrderModal
+            editingOrder={
+              editingOrder
+            }
+            form={form}
+            clients={
+              clients
+            }
+            availableAssets={
+              availableAssets
+            }
+            saving={
+              saving
+            }
+            error={
+              error
+            }
+            isAdmin={
+              isAdmin
+            }
+            onFormChange={
+              setForm
+            }
+            onClientChange={
+              handleClientChange
+            }
+            onSubmit={
+              handleAdminSubmit
+            }
+            onClose={
+              closeModal
+            }
+          />
+        )}
+    </div>
+  );
+}
 
-              <p className="mt-1 text-sm text-slate-500">
-                {editingOrder
-                  ? isAdmin
-                    ? "Review and update the maintenance work order."
-                    : "Review the maintenance request and provide your response."
-                  : "Create a new maintenance work order for a client asset."}
-              </p>
-            </div>
+/* ============================================================
+   ADMIN MODAL
+============================================================ */
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-5 p-6"
-            >
-              {/* Modal error */}
+function AdminWorkOrderModal({
+  editingOrder,
+  form,
+  clients,
+  availableAssets,
+  saving,
+  error,
+  isAdmin,
+  onFormChange,
+  onClientChange,
+  onSubmit,
+  onClose,
+}: {
+  editingOrder:
+    | WorkOrder
+    | null;
 
-              {error && (
-                <div className="rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-                  {error}
-                </div>
-              )}
+  form: WorkOrderForm;
 
-              {/* =================================================
-                  ADMIN CLIENT / COMPANY / ASSET
-              ================================================= */}
+  clients: Client[];
 
-              {isAdmin && (
-                <>
-                  <SelectField
-                    label="Client"
-                    value={
-                      form.client !== null
-                        ? String(
-                            form.client
-                          )
-                        : ""
-                    }
-                    onChange={(value) =>
-                      handleClientChange(
-                        value
-                          ? Number(value)
-                          : null
-                      )
-                    }
-                    required
-                  >
-                    <option value="">
-                      Select a client
-                    </option>
+  availableAssets: Asset[];
 
-                    {clients.map(
-                      (client) => (
-                        <option
-                          key={
-                            client.id
-                          }
-                          value={
-                            client.id
-                          }
-                        >
-                          {client.first_name ||
-                          client.last_name
-                            ? `${client.first_name} ${client.last_name}`.trim()
-                            : client.username}
+  saving: boolean;
 
-                          {client.company_name
-                            ? ` — ${client.company_name}`
-                            : ""}
-                        </option>
-                      )
-                    )}
-                  </SelectField>
+  error: string;
 
-                  {/* Company */}
+  isAdmin: boolean;
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-300">
-                      Company
-                    </label>
+  onFormChange: React.Dispatch<
+    React.SetStateAction<WorkOrderForm>
+  >;
 
-                    <input
-                      type="text"
-                      value={
-                        clients.find(
-                          (client) =>
-                            client.id ===
-                            form.client
-                        )?.company_name ||
-                        ""
-                      }
-                      disabled
-                      placeholder="Company is assigned from the client"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-400 outline-none"
-                    />
+  onClientChange: (
+    id: number | null
+  ) => void;
 
-                    <p className="mt-2 text-xs text-slate-600">
-                      The company is automatically
-                      determined from the selected
-                      client.
-                    </p>
-                  </div>
+  onSubmit: (
+    event: FormEvent<HTMLFormElement>
+  ) => void;
 
-                  {/* Asset */}
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell>
+      <div className="border-b border-slate-800 p-5 sm:p-6">
+        <h2 className="text-xl font-semibold text-white">
+          {editingOrder
+            ? "Edit Work Order"
+            : "Create Work Order"}
+        </h2>
 
-                  <SelectField
-                    label="Asset"
-                    value={
-                      form.asset !== null
-                        ? String(
-                            form.asset
-                          )
-                        : ""
-                    }
-                    onChange={(value) =>
-                      setForm(
-                        (current) => ({
-                          ...current,
-                          asset: value
-                            ? Number(
-                                value
-                              )
-                            : null,
-                        })
-                      )
-                    }
-                    required
-                    disabled={
-                      !form.client ||
-                      availableAssets.length ===
-                        0
-                    }
-                  >
-                    <option value="">
-                      {!form.client
-                        ? "Select a client first"
-                        : availableAssets.length ===
-                            0
-                          ? "No assets assigned to this client"
-                          : "Select an asset"}
-                    </option>
+        <p className="mt-1 text-sm text-slate-500">
+          {editingOrder
+            ? "Update the maintenance work order."
+            : "Create a new maintenance work order for a client asset."}
+        </p>
+      </div>
 
-                    {availableAssets.map(
-                      (asset) => (
-                        <option
-                          key={asset.id}
-                          value={asset.id}
-                        >
-                          {asset.name} —{" "}
-                          {
-                            asset.serial_number
-                          }
-                        </option>
-                      )
-                    )}
-                  </SelectField>
-                </>
-              )}
+      <form
+        onSubmit={onSubmit}
+        className="space-y-5 p-5 sm:p-6"
+      >
+        {error && (
+          <ErrorMessage
+            message={
+              error
+            }
+          />
+        )}
 
-              {/* =================================================
-                  CLIENT CONTEXT
-              ================================================= */}
-
-              {isClient &&
-                editingOrder && (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <InfoField
-                      label="Asset"
-                      value={
-                        editingOrder.asset_name
-                      }
-                    />
-
-                    <InfoField
-                      label="Company"
-                      value={
-                        editingOrder.company_name ||
-                        user?.company_name ||
-                        "Your company"
-                      }
-                    />
-
-                    <InfoField
-                      label="Work Order"
-                      value={`#${editingOrder.id}`}
-                    />
-
-                    <InfoField
-                      label="Created"
-                      value={formatDate(
-                        editingOrder.created_at
-                      )}
-                    />
-                  </div>
-                )}
-
-              {/* =================================================
-                  TITLE
-              ================================================= */}
-
-              <Input
-                label="Work Order Title"
-                value={form.title}
-                onChange={(value) =>
-                  setForm(
-                    (current) => ({
-                      ...current,
-                      title: value,
-                    })
+        <SelectField
+          label="Client"
+          value={
+            form.client !==
+            null
+              ? String(
+                  form.client
+                )
+              : ""
+          }
+          onChange={(
+            value
+          ) =>
+            onClientChange(
+              value
+                ? Number(
+                    value
                   )
+                : null
+            )
+          }
+          required
+        >
+          <option value="">
+            Select a client
+          </option>
+
+          {clients.map(
+            (client) => (
+              <option
+                key={
+                  client.id
                 }
-                placeholder="e.g. Generator maintenance"
-                required
-                disabled={isClient}
-              />
-
-              {/* =================================================
-                  DESCRIPTION
-              ================================================= */}
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">
-                  Description
-                </label>
-
-                <textarea
-                  value={
-                    form.description
-                  }
-                  onChange={(event) =>
-                    setForm(
-                      (current) => ({
-                        ...current,
-                        description:
-                          event.target
-                            .value,
-                      })
-                    )
-                  }
-                  rows={5}
-                  placeholder="Describe the maintenance work required..."
-                  required
-                  disabled={isClient}
-                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                />
-              </div>
-
-              {/* =================================================
-                  CLIENT RESPONSE WORKFLOW
-              ================================================= */}
-
-              {isClient &&
-                editingOrder && (
-                  <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
-                    <div>
-                      <p className="text-sm font-semibold text-white">
-                        Work Order Response
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        Review the maintenance request
-                        and provide your decision.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <InfoField
-                        label="Current Response"
-                        value={formatClientResponse(
-                          editingOrder.client_response
-                        )}
-                      />
-
-                      <InfoField
-                        label="Responded At"
-                        value={
-                          editingOrder.client_responded_at
-                            ? formatDate(
-                                editingOrder.client_responded_at
-                              )
-                            : "Not yet responded"
-                        }
-                      />
-                    </div>
-
-                    {/* Already responded */}
-
-                    {(editingOrder.client_response ===
-                      "ACCEPTED" ||
-                      editingOrder.client_response ===
-                        "REJECTED") && (
-                      <div
-                        className={
-                          editingOrder.client_response ===
-                          "ACCEPTED"
-                            ? "rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4"
-                            : "rounded-xl border border-red-900/50 bg-red-950/20 p-4"
-                        }
-                      >
-                        <p
-                          className={
-                            editingOrder.client_response ===
-                            "ACCEPTED"
-                              ? "text-xs font-semibold uppercase tracking-wide text-emerald-400"
-                              : "text-xs font-semibold uppercase tracking-wide text-red-400"
-                          }
-                        >
-                          Your Response
-                        </p>
-
-                        <p className="mt-2 text-sm font-semibold text-white">
-                          {formatClientResponse(
-                            editingOrder.client_response
-                          )}
-                        </p>
-
-                        {editingOrder.client_response_comment && (
-                          <p className="mt-2 text-sm text-slate-300">
-                            {
-                              editingOrder.client_response_comment
-                            }
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Awaiting response */}
-
-                    {(!editingOrder.client_response ||
-                      editingOrder.client_response ===
-                        "PENDING") && (
-                      <>
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-300">
-                            Response Comment
-                          </label>
-
-                          <textarea
-                            value={
-                              responseComment
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setResponseComment(
-                                event.target
-                                  .value
-                              )
-                            }
-                            rows={4}
-                            placeholder="Add a comment about your decision..."
-                            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                          <button
-                            type="button"
-                            disabled={
-                              responding
-                            }
-                            onClick={() =>
-                              handleClientResponse(
-                                editingOrder,
-                                "ACCEPTED"
-                              )
-                            }
-                            className="flex-1 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {responding
-                              ? "Submitting..."
-                              : "Accept Work Order"}
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={
-                              responding
-                            }
-                            onClick={() =>
-                              handleClientResponse(
-                                editingOrder,
-                                "REJECTED"
-                              )
-                            }
-                            className="flex-1 rounded-xl border border-red-900/60 bg-red-950/20 px-5 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {responding
-                              ? "Submitting..."
-                              : "Reject Work Order"}
-                          </button>
-                        </div>
-
-                        <p className="text-xs text-slate-600">
-                          A reason is required when
-                          rejecting a work order.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-
-              {/* =================================================
-                  STATUS
-              ================================================= */}
-
-              <SelectField
-                label="Status"
-                value={form.status}
-                onChange={(value) =>
-                  setForm(
-                    (current) => ({
-                      ...current,
-                      status:
-                        value as WorkOrderStatus,
-                    })
-                  )
+                value={
+                  client.id
                 }
-                disabled={!isAdmin}
               >
-                {STATUS_OPTIONS.map(
-                  (status) => (
-                    <option
-                      key={status}
-                      value={status}
-                    >
-                      {formatStatus(
-                        status
-                      )}
-                    </option>
+                {client.first_name ||
+                client.last_name
+                  ? `${client.first_name} ${client.last_name}`.trim()
+                  : client.username}
+
+                {client.company_name
+                  ? ` — ${client.company_name}`
+                  : ""}
+              </option>
+            )
+          )}
+        </SelectField>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-300">
+            Company
+          </label>
+
+          <input
+            type="text"
+            value={
+              clients.find(
+                (client) =>
+                  client.id ===
+                  form.client
+              )?.company_name ||
+              ""
+            }
+            disabled
+            placeholder="Company is assigned from the client"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-400 outline-none"
+          />
+
+          <p className="mt-2 text-xs text-slate-600">
+            The company is automatically
+            determined from the selected
+            client.
+          </p>
+        </div>
+
+        <SelectField
+          label="Asset"
+          value={
+            form.asset !==
+            null
+              ? String(
+                  form.asset
+                )
+              : ""
+          }
+          onChange={(
+            value
+          ) =>
+            onFormChange(
+              (current) => ({
+                ...current,
+                asset: value
+                  ? Number(
+                      value
+                    )
+                  : null,
+              })
+            )
+          }
+          required
+          disabled={
+            !form.client ||
+            availableAssets.length ===
+              0
+          }
+        >
+          <option value="">
+            {!form.client
+              ? "Select a client first"
+              : availableAssets.length ===
+                  0
+                ? "No assets assigned to this client"
+                : "Select an asset"}
+          </option>
+
+          {availableAssets.map(
+            (asset) => (
+              <option
+                key={
+                  asset.id
+                }
+                value={
+                  asset.id
+                }
+              >
+                {
+                  asset.name
+                }{" "}
+                —{" "}
+                {
+                  asset.serial_number
+                }
+              </option>
+            )
+          )}
+        </SelectField>
+
+        <Input
+          label="Work Order Title"
+          value={
+            form.title
+          }
+          onChange={(
+            value
+          ) =>
+            onFormChange(
+              (current) => ({
+                ...current,
+                title: value,
+              })
+            )
+          }
+          placeholder="e.g. Generator maintenance"
+          required
+        />
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-300">
+            Description
+          </label>
+
+          <textarea
+            value={
+              form.description
+            }
+            onChange={(
+              event
+            ) =>
+              onFormChange(
+                (current) => ({
+                  ...current,
+                  description:
+                    event
+                      .target
+                      .value,
+                })
+              )
+            }
+            rows={5}
+            placeholder="Describe the maintenance work required..."
+            required
+            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+          />
+        </div>
+
+        <SelectField
+          label="Status"
+          value={
+            form.status
+          }
+          onChange={(
+            value
+          ) =>
+            onFormChange(
+              (current) => ({
+                ...current,
+                status:
+                  value as WorkOrderStatus,
+              })
+            )
+          }
+          disabled={
+            !isAdmin
+          }
+        >
+          {STATUS_OPTIONS.map(
+            (status) => (
+              <option
+                key={
+                  status
+                }
+                value={
+                  status
+                }
+              >
+                {
+                  formatStatus(
+                    status
                   )
-                )}
-              </SelectField>
+                }
+              </option>
+            )
+          )}
+        </SelectField>
 
-              {!isAdmin && (
-                <p className="text-xs text-slate-500">
-                  Work order status is managed by
-                  the operations team.
-                </p>
-              )}
+        <ModalActions
+          saving={
+            saving
+          }
+          submitText={
+            editingOrder
+              ? "Save Changes"
+              : "Create Work Order"
+          }
+          onClose={
+            onClose
+          }
+        />
+      </form>
+    </ModalShell>
+  );
+}
 
-              {/* =================================================
-                  ACTIONS
-              ================================================= */}
+/* ============================================================
+   CLIENT RESPONSE MODAL
+============================================================ */
 
-              <div className="flex justify-end gap-3 border-t border-slate-800 pt-5">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={
-                    saving ||
-                    responding
-                  }
-                  className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
-                >
-                  Close
-                </button>
+function ClientResponseModal({
+  order,
+  action,
+  comment,
+  saving,
+  error,
+  onActionChange,
+  onCommentChange,
+  onSubmit,
+  onClose,
+}: {
+  order: WorkOrder;
 
-                {isAdmin && (
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {saving
-                      ? "Saving..."
-                      : editingOrder
-                        ? "Save Changes"
-                        : "Create Work Order"}
-                  </button>
-                )}
-              </div>
-            </form>
+  action: ResponseAction;
+
+  comment: string;
+
+  saving: boolean;
+
+  error: string;
+
+  onActionChange: (
+    action: ResponseAction
+  ) => void;
+
+  onCommentChange: (
+    comment: string
+  ) => void;
+
+  onSubmit: (
+    event: FormEvent<HTMLFormElement>
+  ) => void;
+
+  onClose: () => void;
+}) {
+  const alreadyResponded =
+    order.client_response ===
+      "ACCEPTED" ||
+    order.client_response ===
+      "REJECTED";
+
+  return (
+    <ModalShell>
+      <div className="border-b border-slate-800 p-5 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-400">
+              Work Order #
+              {order.id}
+            </p>
+
+            <h2 className="mt-1 text-xl font-semibold text-white">
+              {order.title}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Review this maintenance
+              request.
+            </p>
+          </div>
+
+          <StatusBadge
+            status={
+              order.status
+            }
+          />
+        </div>
+      </div>
+
+      <form
+        onSubmit={
+          onSubmit
+        }
+        className="space-y-5 p-5 sm:p-6"
+      >
+        {error && (
+          <ErrorMessage
+            message={
+              error
+            }
+          />
+        )}
+
+        {/* Work order details */}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InfoField
+            label="Asset"
+            value={
+              order.asset_name
+            }
+          />
+
+          <InfoField
+            label="Company"
+            value={
+              order.company_name ||
+              "Your company"
+            }
+          />
+
+          <InfoField
+            label="Created"
+            value={formatDate(
+              order.created_at
+            )}
+          />
+
+          <InfoField
+            label="Current Status"
+            value={formatStatus(
+              order.status
+            )}
+          />
+        </div>
+
+        {/* Description */}
+
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Description
+          </p>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-300">
+            {
+              order.description
+            }
           </div>
         </div>
+
+        {/* Existing response */}
+
+        {alreadyResponded && (
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Previous Response
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <ResponseBadge
+                response={
+                  order.client_response
+                }
+              />
+
+              {order.client_responded_at && (
+                <span className="text-xs text-slate-500">
+                  {formatDate(
+                    order.client_responded_at
+                  )}
+                </span>
+              )}
+            </div>
+
+            {order.client_response_comment && (
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {
+                  order.client_response_comment
+                }
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Response */}
+
+        <div>
+          <p className="mb-3 text-sm font-medium text-slate-300">
+            Your Response
+          </p>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ResponseOption
+              selected={
+                action ===
+                "ACCEPT"
+              }
+              title="Accept"
+              description="Approve the work order."
+              onClick={() =>
+                onActionChange(
+                  "ACCEPT"
+                )
+              }
+            />
+
+            <ResponseOption
+              selected={
+                action ===
+                "REJECT"
+              }
+              title="Reject"
+              description="Decline the work order."
+              onClick={() =>
+                onActionChange(
+                  "REJECT"
+                )
+              }
+            />
+          </div>
+        </div>
+
+        {/* Comment */}
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-300">
+            Comment
+            {action ===
+              "REJECT" && (
+              <span className="ml-1 text-red-400">
+                *
+              </span>
+            )}
+          </label>
+
+          <textarea
+            value={
+              comment
+            }
+            onChange={(
+              event
+            ) =>
+              onCommentChange(
+                event.target
+                  .value
+              )
+            }
+            rows={4}
+            placeholder={
+              action ===
+              "REJECT"
+                ? "Please explain why you are rejecting this work order..."
+                : "Add an optional comment..."
+            }
+            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+          />
+        </div>
+
+        <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-4">
+          <p className="text-xs leading-5 text-blue-300">
+            Your response will be recorded
+            against this work order and
+            made available to the operations
+            team.
+          </p>
+        </div>
+
+        <ModalActions
+          saving={
+            saving
+          }
+          submitText={
+            action ===
+            "ACCEPT"
+              ? "Accept Work Order"
+              : "Reject Work Order"
+          }
+          onClose={
+            onClose
+          }
+        />
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ============================================================
+   MOBILE CARD
+============================================================ */
+
+function WorkOrderCard({
+  order,
+  isAdmin,
+  isClient,
+  onEdit,
+  onDelete,
+}: {
+  order: WorkOrder;
+
+  isAdmin: boolean;
+
+  isClient: boolean;
+
+  onEdit: (
+    order: WorkOrder
+  ) => void;
+
+  onDelete: (
+    order: WorkOrder
+  ) => void;
+}) {
+  return (
+    <article className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-xs font-bold text-blue-400">
+            #
+            {
+              order.id
+            }
+          </div>
+
+          <div className="min-w-0">
+            <h3 className="truncate font-medium text-white">
+              {
+                order.title
+              }
+            </h3>
+
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+              {
+                order.description
+              }
+            </p>
+          </div>
+        </div>
+
+        <StatusBadge
+          status={
+            order.status
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <MobileDetail
+          label="Asset"
+          value={
+            order.asset_name
+          }
+        />
+
+        {isAdmin && (
+          <MobileDetail
+            label="Client"
+            value={
+              order.client_username
+            }
+          />
+        )}
+
+        {isAdmin && (
+          <MobileDetail
+            label="Company"
+            value={
+              order.company_name ||
+              "No company"
+            }
+          />
+        )}
+
+        <MobileDetail
+          label="Created"
+          value={formatDate(
+            order.created_at
+          )}
+        />
+
+        {isClient && (
+          <div className="col-span-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+              Response
+            </p>
+
+            <ResponseBadge
+              response={
+                order.client_response
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 border-t border-slate-800 pt-4 sm:flex-row sm:justify-end">
+        {(isAdmin ||
+          isClient) && (
+          <button
+            type="button"
+            onClick={() =>
+              onEdit(order)
+            }
+            className="w-full rounded-lg border border-slate-700 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400 sm:w-auto"
+          >
+            {isClient
+              ? "Review Work Order"
+              : "Edit"}
+          </button>
+        )}
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() =>
+              onDelete(
+                order
+              )
+            }
+            className="w-full rounded-lg border border-red-900/60 px-3 py-2.5 text-xs font-medium text-red-400 transition hover:bg-red-950/40 sm:w-auto"
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/* ============================================================
+   ORDER ACTIONS
+============================================================ */
+
+function OrderActions({
+  order,
+  isAdmin,
+  isClient,
+  onEdit,
+  onDelete,
+}: {
+  order: WorkOrder;
+
+  isAdmin: boolean;
+
+  isClient: boolean;
+
+  onEdit: (
+    order: WorkOrder
+  ) => void;
+
+  onDelete: (
+    order: WorkOrder
+  ) => void;
+}) {
+  return (
+    <div className="flex justify-end gap-2">
+      {(isAdmin ||
+        isClient) && (
+        <button
+          type="button"
+          onClick={() =>
+            onEdit(order)
+          }
+          className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+        >
+          {isClient
+            ? "Review"
+            : "Edit"}
+        </button>
       )}
+
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() =>
+            onDelete(order)
+          }
+          className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   RESPONSE OPTION
+============================================================ */
+
+function ResponseOption({
+  selected,
+  title,
+  description,
+  onClick,
+}: {
+  selected: boolean;
+
+  title: string;
+
+  description: string;
+
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border p-4 text-left transition ${
+        selected
+          ? "border-blue-500 bg-blue-500/10"
+          : "border-slate-700 bg-slate-950 hover:border-slate-600"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`h-4 w-4 rounded-full border ${
+            selected
+              ? "border-blue-400 bg-blue-500"
+              : "border-slate-600"
+          }`}
+        />
+
+        <span className="font-medium text-white">
+          {title}
+        </span>
+      </div>
+
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        {description}
+      </p>
+    </button>
+  );
+}
+
+/* ============================================================
+   MODAL SHELL
+============================================================ */
+
+function ModalShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/70 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-8">
+      <div className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   MODAL ACTIONS
+============================================================ */
+
+function ModalActions({
+  saving,
+  submitText,
+  onClose,
+}: {
+  saving: boolean;
+
+  submitText: string;
+
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex flex-col-reverse gap-3 border-t border-slate-800 pt-5 sm:flex-row sm:justify-end">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={
+          saving
+        }
+        className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-50 sm:w-auto"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        disabled={
+          saving
+        }
+        className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      >
+        {saving
+          ? "Saving..."
+          : submitText}
+      </button>
     </div>
   );
 }
@@ -1808,15 +2325,20 @@ function Input({
   type = "text",
   placeholder,
   required = false,
-  disabled = false,
 }: {
   label: string;
+
   value: string;
-  onChange: (value: string) => void;
+
+  onChange: (
+    value: string
+  ) => void;
+
   type?: string;
+
   placeholder?: string;
+
   required?: boolean;
-  disabled?: boolean;
 }) {
   return (
     <div>
@@ -1826,16 +2348,22 @@ function Input({
 
       <input
         type={type}
-        value={value}
+        value={
+          value
+        }
         onChange={(event) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        placeholder={
+          placeholder
+        }
+        required={
+          required
+        }
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
       />
     </div>
   );
@@ -1854,10 +2382,17 @@ function SelectField({
   disabled = false,
 }: {
   label: string;
+
   value: string;
-  onChange: (value: string) => void;
+
+  onChange: (
+    value: string
+  ) => void;
+
   children: React.ReactNode;
+
   required?: boolean;
+
   disabled?: boolean;
 }) {
   return (
@@ -1867,14 +2402,21 @@ function SelectField({
       </label>
 
       <select
-        value={value}
+        value={
+          value
+        }
         onChange={(event) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
-        required={required}
-        disabled={disabled}
+        required={
+          required
+        }
+        disabled={
+          disabled
+        }
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {children}
@@ -1892,6 +2434,7 @@ function InfoField({
   value,
 }: {
   label: string;
+
   value: string;
 }) {
   return (
@@ -1908,6 +2451,31 @@ function InfoField({
 }
 
 /* ============================================================
+   MOBILE DETAIL
+============================================================ */
+
+function MobileDetail({
+  label,
+  value,
+}: {
+  label: string;
+
+  value: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-xs text-slate-300">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================
    STAT CARD
 ============================================================ */
 
@@ -1917,22 +2485,90 @@ function StatCard({
   description,
 }: {
   title: string;
+
   value: number;
+
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <p className="text-sm text-slate-400">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:p-6">
+      <p className="text-xs text-slate-400 sm:text-sm">
         {title}
       </p>
 
-      <p className="mt-2 text-3xl font-bold text-white">
+      <p className="mt-2 text-2xl font-bold text-white sm:text-3xl">
         {value}
       </p>
 
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-2 hidden text-xs text-slate-500 sm:mt-3 sm:block">
         {description}
       </p>
+    </div>
+  );
+}
+
+/* ============================================================
+   TABLE HEADER
+============================================================ */
+
+function TableHeader({
+  children,
+  align = "left",
+}: {
+  children: React.ReactNode;
+
+  align?: "left" | "right";
+}) {
+  return (
+    <th
+      className={`px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 ${
+        align === "right"
+          ? "text-right"
+          : "text-left"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+/* ============================================================
+   WORK ORDER IDENTITY
+============================================================ */
+
+function WorkOrderIdentity({
+  order,
+}: {
+  order: WorkOrder;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">
+        #
+        {
+          order.id
+        }
+      </div>
+
+      <div>
+        <p className="font-medium text-white">
+          {
+            order.title
+          }
+        </p>
+
+        <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
+          {
+            order.description
+          }
+        </p>
+
+        <p className="mt-2 text-xs text-slate-600">
+          {formatDate(
+            order.created_at
+          )}
+        </p>
+      </div>
     </div>
   );
 }
@@ -1965,45 +2601,70 @@ function StatusBadge({
 
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${styles[status]}`}
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${styles[status]}`}
     >
-      {formatStatus(status)}
+      {formatStatus(
+        status
+      )}
     </span>
   );
 }
 
 /* ============================================================
-   CLIENT RESPONSE BADGE
+   RESPONSE BADGE
 ============================================================ */
 
-function ClientResponseBadge({
+function ResponseBadge({
   response,
 }: {
-  response: ClientResponse | null;
+  response:
+    | ClientResponse
+    | null
+    | undefined;
 }) {
   if (
     !response ||
-    response === "PENDING"
+    response ===
+      "PENDING"
   ) {
     return (
-      <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
+      <span className="inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
         Awaiting Response
       </span>
     );
   }
 
-  if (response === "ACCEPTED") {
+  if (
+    response ===
+    "ACCEPTED"
+  ) {
     return (
-      <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+      <span className="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
         Accepted
       </span>
     );
   }
 
   return (
-    <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400">
+    <span className="inline-flex rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400">
       Rejected
     </span>
+  );
+}
+
+/* ============================================================
+   ERROR MESSAGE
+============================================================ */
+
+function ErrorMessage({
+  message,
+}: {
+  message: string;
+}) {
+  return (
+    <div className="rounded-xl border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+      {message}
+    </div>
   );
 }
 
@@ -2012,31 +2673,18 @@ function ClientResponseBadge({
 ============================================================ */
 
 function formatStatus(
-  status: WorkOrderStatus
+  status: string
 ) {
   return status
-    .replace(/_/g, " ")
+    .replace(
+      /_/g,
+      " "
+    )
     .toLowerCase()
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase()
-    );
-}
-
-function formatClientResponse(
-  response: ClientResponse | null
-) {
-  if (
-    !response ||
-    response === "PENDING"
-  ) {
-    return "Awaiting Response";
-  }
-
-  return response
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase()
+    .replace(
+      /\b\w/g,
+      (letter) =>
+        letter.toUpperCase()
     );
 }
 
@@ -2073,7 +2721,8 @@ function extractApiError(
 ): string | null {
   if (
     !data ||
-    typeof data !== "object"
+    typeof data !==
+      "object"
   ) {
     return null;
   }
@@ -2091,30 +2740,45 @@ function extractApiError(
     return object.detail;
   }
 
-  for (
-    const [field, value] of Object.entries(
-      object
-    )
+  if (
+    typeof object.message ===
+    "string"
   ) {
+    return object.message;
+  }
+
+  for (const [
+    field,
+    value,
+  ] of Object.entries(
+    object
+  )) {
     if (
-      typeof value === "string"
+      typeof value ===
+      "string"
     ) {
       return `${field}: ${value}`;
     }
 
     if (
-      Array.isArray(value) &&
-      typeof value[0] === "string"
+      Array.isArray(
+        value
+      ) &&
+      typeof value[0] ===
+        "string"
     ) {
       return `${field}: ${value[0]}`;
     }
 
     if (
       value &&
-      typeof value === "object"
+      typeof value ===
+        "object"
     ) {
       const nested =
-        extractApiError(value);
+        extractApiError(
+          value
+        );
 
       if (nested) {
         return `${field}: ${nested}`;
@@ -2124,3 +2788,4 @@ function extractApiError(
 
   return null;
 }
+
