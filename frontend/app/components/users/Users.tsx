@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -9,15 +10,18 @@ import {
 
 import { apiFetch, apiJson } from "@/lib/api";
 
-/* ============================================================
-   TYPES
-============================================================ */
+// ============================================================
+// TYPES
+// ============================================================
 
 type Role = "ADMIN" | "TECHNICIAN" | "CLIENT";
 
 type Company = {
   id: number;
   name: string;
+  registration_number?: string | null;
+  email?: string;
+  phone?: string;
 };
 
 type User = {
@@ -29,7 +33,7 @@ type User = {
   role: Role;
   is_active: boolean;
 
-  company?: number | null;
+  company_id?: number | null;
   company_name?: string | null;
 };
 
@@ -43,15 +47,11 @@ type UserForm = {
   company: string;
 };
 
-/* ============================================================
-   PAGE
-============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function UsersPage() {
-  /* ----------------------------------------------------------
-     STATE
-  ---------------------------------------------------------- */
-
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
 
@@ -67,7 +67,6 @@ export default function UsersPage() {
   const [success, setSuccess] = useState("");
 
   const [showModal, setShowModal] = useState(false);
-
   const [editingUser, setEditingUser] =
     useState<User | null>(null);
 
@@ -81,9 +80,9 @@ export default function UsersPage() {
     company: "",
   });
 
-  /* ==========================================================
-     LOAD USERS
-  ========================================================== */
+  // ==========================================================
+  // LOAD USERS
+  // ==========================================================
 
   async function getUsers() {
     try {
@@ -110,9 +109,9 @@ export default function UsersPage() {
     }
   }
 
-  /* ==========================================================
-     LOAD COMPANIES
-  ========================================================== */
+  // ==========================================================
+  // LOAD COMPANIES
+  // ==========================================================
 
   async function getCompanies() {
     try {
@@ -143,18 +142,18 @@ export default function UsersPage() {
     }
   }
 
-  /* ==========================================================
-     INITIAL LOAD
-  ========================================================== */
+  // ==========================================================
+  // INITIAL LOAD
+  // ==========================================================
 
   useEffect(() => {
     getUsers();
     getCompanies();
   }, []);
 
-  /* ==========================================================
-     FILTER USERS
-  ========================================================== */
+  // ==========================================================
+  // SEARCH
+  // ==========================================================
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -178,9 +177,9 @@ export default function UsersPage() {
     );
   }, [users, search]);
 
-  /* ==========================================================
-     STATISTICS
-  ========================================================== */
+  // ==========================================================
+  // STATISTICS
+  // ==========================================================
 
   const admins = users.filter(
     (user) => user.role === "ADMIN"
@@ -194,9 +193,9 @@ export default function UsersPage() {
     (user) => user.role === "CLIENT"
   ).length;
 
-  /* ==========================================================
-     RESET FORM
-  ========================================================== */
+  // ==========================================================
+  // RESET FORM
+  // ==========================================================
 
   function resetForm() {
     setForm({
@@ -210,9 +209,9 @@ export default function UsersPage() {
     });
   }
 
-  /* ==========================================================
-     CREATE MODAL
-  ========================================================== */
+  // ==========================================================
+  // CREATE MODAL
+  // ==========================================================
 
   function openCreateModal() {
     setEditingUser(null);
@@ -225,9 +224,9 @@ export default function UsersPage() {
     setShowModal(true);
   }
 
-  /* ==========================================================
-     EDIT MODAL
-  ========================================================== */
+  // ==========================================================
+  // EDIT MODAL
+  // ==========================================================
 
   function openEditModal(user: User) {
     setEditingUser(user);
@@ -240,9 +239,9 @@ export default function UsersPage() {
       role: user.role,
       password: "",
       company:
-        user.company !== null &&
-        user.company !== undefined
-          ? String(user.company)
+        user.company_id !== null &&
+        user.company_id !== undefined
+          ? String(user.company_id)
           : "",
     });
 
@@ -252,9 +251,9 @@ export default function UsersPage() {
     setShowModal(true);
   }
 
-  /* ==========================================================
-     CLOSE MODAL
-  ========================================================== */
+  // ==========================================================
+  // CLOSE MODAL
+  // ==========================================================
 
   function closeModal() {
     if (saving) {
@@ -267,16 +266,16 @@ export default function UsersPage() {
     resetForm();
   }
 
-  /* ==========================================================
-     ROLE CHANGE
-  ========================================================== */
+  // ==========================================================
+  // ROLE CHANGE
+  // ==========================================================
 
   function handleRoleChange(role: Role) {
     setForm((current) => ({
       ...current,
       role,
 
-      // Company is only applicable to clients.
+      // Clear company when user is not a client.
       company:
         role === "CLIENT"
           ? current.company
@@ -284,9 +283,9 @@ export default function UsersPage() {
     }));
   }
 
-  /* ==========================================================
-     SUBMIT
-  ========================================================== */
+  // ==========================================================
+  // SUBMIT
+  // ==========================================================
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -298,9 +297,9 @@ export default function UsersPage() {
     const first_name = form.first_name.trim();
     const last_name = form.last_name.trim();
 
-    /* --------------------------------------------------------
-       VALIDATION
-    -------------------------------------------------------- */
+    // --------------------------------------------------------
+    // BASIC VALIDATION
+    // --------------------------------------------------------
 
     if (!username) {
       setError("Username is required.");
@@ -312,12 +311,16 @@ export default function UsersPage() {
       return;
     }
 
-    if (!editingUser && !form.password.trim()) {
+    if (!editingUser && !form.password) {
       setError(
         "Password is required when creating a user."
       );
       return;
     }
+
+    // --------------------------------------------------------
+    // CLIENT MUST HAVE COMPANY
+    // --------------------------------------------------------
 
     if (
       form.role === "CLIENT" &&
@@ -329,16 +332,16 @@ export default function UsersPage() {
       return;
     }
 
-    /* --------------------------------------------------------
-       SAVE
-    -------------------------------------------------------- */
-
     try {
       setSaving(true);
       setError("");
       setSuccess("");
 
       const isEditing = Boolean(editingUser);
+
+      // ------------------------------------------------------
+      // REQUEST BODY
+      // ------------------------------------------------------
 
       const body: Record<string, unknown> = {
         username,
@@ -348,23 +351,20 @@ export default function UsersPage() {
         role: form.role,
       };
 
-      /* ------------------------------------------------------
-         COMPANY
-
-         Clients receive a company ID.
-         Admins and technicians have no company assignment
-         through this form.
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // COMPANY
+      // ------------------------------------------------------
 
       if (form.role === "CLIENT") {
         body.company = Number(form.company);
       } else {
+        // For technicians, company is optional.
         body.company = null;
       }
 
-      /* ------------------------------------------------------
-         PASSWORD
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // PASSWORD
+      // ------------------------------------------------------
 
       if (!isEditing) {
         body.password = form.password;
@@ -372,35 +372,27 @@ export default function UsersPage() {
         body.password = form.password;
       }
 
-      /* ------------------------------------------------------
-         REQUEST
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // REQUEST
+      // ------------------------------------------------------
 
       const response = await apiFetch(
         isEditing
           ? `/api/users/${editingUser!.id}/`
           : "/api/users/",
         {
-          method: isEditing
-            ? "PATCH"
-            : "POST",
-
+          method: isEditing ? "PATCH" : "POST",
           body: JSON.stringify(body),
         }
       );
 
-      /* ------------------------------------------------------
-         AUTH ERROR
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // AUTH ERROR
+      // ------------------------------------------------------
 
       if (response.status === 401) {
-        localStorage.removeItem(
-          "access_token"
-        );
-
-        localStorage.removeItem(
-          "refresh_token"
-        );
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
 
         window.location.href = "/login";
 
@@ -411,24 +403,22 @@ export default function UsersPage() {
         .json()
         .catch(() => null);
 
-      /* ------------------------------------------------------
-         API ERROR
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // API ERROR
+      // ------------------------------------------------------
 
       if (!response.ok) {
         throw new Error(
           extractApiError(data) ||
             `Unable to ${
-              isEditing
-                ? "update"
-                : "create"
+              isEditing ? "update" : "create"
             } user.`
         );
       }
 
-      /* ------------------------------------------------------
-         SUCCESS
-      ------------------------------------------------------ */
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
 
       setSuccess(
         isEditing
@@ -436,9 +426,7 @@ export default function UsersPage() {
           : "User created successfully."
       );
 
-      setShowModal(false);
-      setEditingUser(null);
-      resetForm();
+      closeModal();
 
       await getUsers();
     } catch (err) {
@@ -452,9 +440,9 @@ export default function UsersPage() {
     }
   }
 
-  /* ==========================================================
-     DELETE
-  ========================================================== */
+  // ==========================================================
+  // DELETE
+  // ==========================================================
 
   async function handleDelete(user: User) {
     const confirmed = window.confirm(
@@ -478,18 +466,9 @@ export default function UsersPage() {
         }
       );
 
-      /* ------------------------------------------------------
-         AUTH ERROR
-      ------------------------------------------------------ */
-
       if (response.status === 401) {
-        localStorage.removeItem(
-          "access_token"
-        );
-
-        localStorage.removeItem(
-          "refresh_token"
-        );
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
 
         window.location.href = "/login";
 
@@ -500,10 +479,6 @@ export default function UsersPage() {
         .json()
         .catch(() => null);
 
-      /* ------------------------------------------------------
-         API ERROR
-      ------------------------------------------------------ */
-
       if (!response.ok) {
         throw new Error(
           extractApiError(data) ||
@@ -511,9 +486,7 @@ export default function UsersPage() {
         );
       }
 
-      setSuccess(
-        "User deleted successfully."
-      );
+      setSuccess("User deleted successfully.");
 
       await getUsers();
     } catch (err) {
@@ -525,19 +498,15 @@ export default function UsersPage() {
     }
   }
 
-  /* ==========================================================
-     RENDER
-  ========================================================== */
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <div className="space-y-8">
-
-      {/* ======================================================
-          HEADER
-      ====================================================== */}
+      {/* HEADER */}
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-
         <div>
           <p className="text-sm font-medium text-blue-400">
             ADMINISTRATION
@@ -562,9 +531,7 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* ======================================================
-          SUCCESS
-      ====================================================== */}
+      {/* FEEDBACK */}
 
       {success && (
         <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-5 py-4 text-sm text-emerald-300">
@@ -572,22 +539,15 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* ======================================================
-          ERROR
-      ====================================================== */}
-
       {error && !showModal && (
         <div className="rounded-xl border border-red-900 bg-red-950/30 px-5 py-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
-      {/* ======================================================
-          STATISTICS
-      ====================================================== */}
+      {/* STATISTICS */}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
         <StatCard
           title="Total Users"
           value={users.length}
@@ -611,21 +571,14 @@ export default function UsersPage() {
           value={clients}
           description="Client accounts"
         />
-
       </div>
 
-      {/* ======================================================
-          USERS
-      ====================================================== */}
+      {/* USERS */}
 
       <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-
-        {/* ----------------------------------------------------
-            TOOLBAR
-        ---------------------------------------------------- */}
+        {/* TOOLBAR */}
 
         <div className="flex flex-col gap-4 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
-
           <div>
             <h2 className="font-semibold text-white">
               Registered Users
@@ -645,27 +598,16 @@ export default function UsersPage() {
             placeholder="Search users..."
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500 md:w-80"
           />
-
         </div>
 
-        {/* ----------------------------------------------------
-            LOADING
-        ---------------------------------------------------- */}
+        {/* LOADING */}
 
         {loading ? (
           <div className="flex min-h-60 items-center justify-center">
-
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-
           </div>
         ) : filteredUsers.length === 0 ? (
-
-          /* --------------------------------------------------
-             EMPTY
-          -------------------------------------------------- */
-
           <div className="p-12 text-center">
-
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-2xl text-slate-500">
               ♙
             </div>
@@ -691,22 +633,12 @@ export default function UsersPage() {
                 Add User
               </button>
             )}
-
           </div>
-
         ) : (
-
-          /* --------------------------------------------------
-             TABLE
-          -------------------------------------------------- */
-
           <div className="overflow-x-auto">
-
             <table className="w-full min-w-[1050px]">
-
               <thead>
                 <tr className="border-b border-slate-800 text-left">
-
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     User
                   </th>
@@ -730,14 +662,11 @@ export default function UsersPage() {
                   <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Actions
                   </th>
-
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-800">
-
                 {filteredUsers.map((user) => {
-
                   const name =
                     `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() ||
                     user.username;
@@ -747,13 +676,10 @@ export default function UsersPage() {
                       key={user.id}
                       className="transition hover:bg-slate-800/30"
                     >
-
                       {/* USER */}
 
                       <td className="px-6 py-5">
-
                         <div className="flex items-center gap-3">
-
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 font-semibold text-blue-400">
                             {name
                               .charAt(0)
@@ -761,7 +687,6 @@ export default function UsersPage() {
                           </div>
 
                           <div>
-
                             <p className="font-medium text-white">
                               {name}
                             </p>
@@ -769,11 +694,8 @@ export default function UsersPage() {
                             <p className="mt-1 text-xs text-slate-500">
                               @{user.username}
                             </p>
-
                           </div>
-
                         </div>
-
                       </td>
 
                       {/* EMAIL */}
@@ -793,31 +715,23 @@ export default function UsersPage() {
                       {/* COMPANY */}
 
                       <td className="px-6 py-5">
+                        {user.company_name ? (
+                          <div>
+                            <p className="text-sm font-medium text-slate-200">
+                              {user.company_name}
+                            </p>
 
-                        {user.role === "CLIENT" ? (
-                          user.company_name ? (
-                            <div>
-                              <p className="text-sm font-medium text-slate-200">
-                                {user.company_name}
+                            {user.company_id && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                Company #{user.company_id}
                               </p>
-
-                              {user.company && (
-                                <p className="mt-1 text-xs text-slate-500">
-                                  Company #{user.company}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-amber-400">
-                              Not assigned
-                            </span>
-                          )
+                            )}
+                          </div>
                         ) : (
                           <span className="text-sm text-slate-600">
                             —
                           </span>
                         )}
-
                       </td>
 
                       {/* STATUS */}
@@ -831,9 +745,7 @@ export default function UsersPage() {
                       {/* ACTIONS */}
 
                       <td className="px-6 py-5">
-
                         <div className="flex justify-end gap-2">
-
                           <button
                             type="button"
                             onClick={() =>
@@ -853,39 +765,25 @@ export default function UsersPage() {
                           >
                             Delete
                           </button>
-
                         </div>
-
                       </td>
-
                     </tr>
                   );
                 })}
-
               </tbody>
-
             </table>
-
           </div>
         )}
-
       </section>
 
-      {/* ======================================================
-          CREATE / EDIT MODAL
-      ====================================================== */}
+      {/* MODAL */}
 
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
-
-            {/* ------------------------------------------------
-                MODAL HEADER
-            ------------------------------------------------ */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+            {/* MODAL HEADER */}
 
             <div className="border-b border-slate-800 p-6">
-
               <h2 className="text-xl font-semibold text-white">
                 {editingUser
                   ? "Edit User"
@@ -897,30 +795,23 @@ export default function UsersPage() {
                   ? "Update this user's account information."
                   : "Create a new AssetHub user account."}
               </p>
-
             </div>
 
-            {/* ------------------------------------------------
-                FORM
-            ------------------------------------------------ */}
+            {/* FORM */}
 
             <form
               onSubmit={handleSubmit}
               className="space-y-5 p-6"
             >
-
-              {/* ERROR */}
-
               {error && (
                 <div className="rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
                   {error}
                 </div>
               )}
 
-              {/* FIRST / LAST NAME */}
+              {/* NAME */}
 
               <div className="grid gap-4 sm:grid-cols-2">
-
                 <Input
                   label="First Name"
                   value={form.first_name}
@@ -942,7 +833,6 @@ export default function UsersPage() {
                     }))
                   }
                 />
-
               </div>
 
               {/* USERNAME */}
@@ -977,7 +867,6 @@ export default function UsersPage() {
               {/* ROLE */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-300">
                   Role
                 </label>
@@ -991,7 +880,6 @@ export default function UsersPage() {
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
                 >
-
                   <option value="CLIENT">
                     Client
                   </option>
@@ -1003,77 +891,58 @@ export default function UsersPage() {
                   <option value="ADMIN">
                     Administrator
                   </option>
-
                 </select>
-
               </div>
 
-              {/* =================================================
-                  COMPANY
-
-                  ONLY CLIENTS
-              ================================================= */}
+              {/* COMPANY */}
 
               {form.role === "CLIENT" && (
                 <div>
-
                   <label className="mb-2 block text-sm font-medium text-slate-300">
                     Company
                   </label>
 
-                  <select
-                    value={form.company}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        company:
-                          event.target.value,
-                      }))
-                    }
-                    required
-                    disabled={
-                      companiesLoading
-                    }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
+                  {companiesLoading ? (
+                    <div className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-500">
+                      Loading companies...
+                    </div>
+                  ) : companies.length === 0 ? (
+                    <div className="rounded-xl border border-amber-900 bg-amber-950/20 px-4 py-3 text-sm text-amber-300">
+                      No companies are available.
+                      Create a company first.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.company}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          company:
+                            event.target.value,
+                        }))
+                      }
+                      required
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    >
+                      <option value="">
+                        Select a company
+                      </option>
 
-                    <option value="">
-                      {companiesLoading
-                        ? "Loading companies..."
-                        : "Select a company"}
-                    </option>
-
-                    {companies.map(
-                      (company) => (
+                      {companies.map((company) => (
                         <option
                           key={company.id}
                           value={company.id}
                         >
                           {company.name}
                         </option>
-                      )
-                    )}
-
-                  </select>
-
-                  {/* COMPANY STATUS */}
-
-                  {companiesLoading && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Loading available
-                      companies...
-                    </p>
+                      ))}
+                    </select>
                   )}
 
-                  {!companiesLoading &&
-                    companies.length === 0 && (
-                      <p className="mt-2 text-xs text-amber-400">
-                        No companies are
-                        available. Create a
-                        company first.
-                      </p>
-                    )}
-
+                  <p className="mt-2 text-xs text-slate-500">
+                    Select the company this client
+                    belongs to.
+                  </p>
                 </div>
               )}
 
@@ -1096,10 +965,9 @@ export default function UsersPage() {
                 required={!editingUser}
               />
 
-              {/* ACTIONS */}
+              {/* BUTTONS */}
 
               <div className="flex justify-end gap-3 pt-2">
-
                 <button
                   type="button"
                   onClick={closeModal}
@@ -1114,7 +982,7 @@ export default function UsersPage() {
                   disabled={
                     saving ||
                     (form.role === "CLIENT" &&
-                      !form.company)
+                      companiesLoading)
                   }
                   className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1124,23 +992,18 @@ export default function UsersPage() {
                       ? "Save Changes"
                       : "Create User"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
 
-/* ============================================================
-   INPUT
-============================================================ */
+// ============================================================
+// INPUT
+// ============================================================
 
 function Input({
   label,
@@ -1157,7 +1020,6 @@ function Input({
 }) {
   return (
     <div>
-
       <label className="mb-2 block text-sm font-medium text-slate-300">
         {label}
       </label>
@@ -1171,14 +1033,13 @@ function Input({
         required={required}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
       />
-
     </div>
   );
 }
 
-/* ============================================================
-   STAT CARD
-============================================================ */
+// ============================================================
+// STAT CARD
+// ============================================================
 
 function StatCard({
   title,
@@ -1191,7 +1052,6 @@ function StatCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
       <p className="text-sm text-slate-400">
         {title}
       </p>
@@ -1203,14 +1063,13 @@ function StatCard({
       <p className="mt-3 text-xs text-slate-500">
         {description}
       </p>
-
     </div>
   );
 }
 
-/* ============================================================
-   ROLE BADGE
-============================================================ */
+// ============================================================
+// ROLE BADGE
+// ============================================================
 
 function RoleBadge({
   role,
@@ -1237,9 +1096,9 @@ function RoleBadge({
   );
 }
 
-/* ============================================================
-   STATUS BADGE
-============================================================ */
+// ============================================================
+// STATUS BADGE
+// ============================================================
 
 function StatusBadge({
   active,
@@ -1254,16 +1113,14 @@ function StatusBadge({
           : "bg-red-500/10 text-red-400"
       }`}
     >
-      {active
-        ? "ACTIVE"
-        : "INACTIVE"}
+      {active ? "ACTIVE" : "INACTIVE"}
     </span>
   );
 }
 
-/* ============================================================
-   API ERROR HANDLER
-============================================================ */
+// ============================================================
+// API ERROR
+// ============================================================
 
 function extractApiError(
   data: unknown
@@ -1275,34 +1132,20 @@ function extractApiError(
   const object =
     data as Record<string, unknown>;
 
-  /* ----------------------------------------------------------
-     detail
-  ---------------------------------------------------------- */
-
-  if (
-    typeof object.detail === "string"
-  ) {
+  if (typeof object.detail === "string") {
     return object.detail;
   }
 
-  /* ----------------------------------------------------------
-     Common DRF validation errors
-  ---------------------------------------------------------- */
-
-  for (const [
-    field,
-    value,
-  ] of Object.entries(object)) {
-
+  for (const value of Object.values(object)) {
     if (typeof value === "string") {
-      return `${field}: ${value}`;
+      return value;
     }
 
     if (
       Array.isArray(value) &&
       typeof value[0] === "string"
     ) {
-      return `${field}: ${value[0]}`;
+      return value[0];
     }
   }
 

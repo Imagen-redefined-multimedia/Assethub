@@ -1,5 +1,5 @@
-from drf_spectacular.utils import extend_schema_field
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema_field
 
 from rest_framework import serializers
 
@@ -17,9 +17,59 @@ from .models import (
 User = get_user_model()
 
 
+# ============================================================
+# COMPANY
+# ============================================================
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = [
+            "id",
+            "name",
+            "registration_number",
+            "email",
+            "phone",
+            "address",
+            "logo",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]
+
+
+# ============================================================
+# USER
+# ============================================================
+
 class UserSerializer(serializers.ModelSerializer):
+    """
+    Used when returning users.
+
+    company_id and company_name are read-only because the
+    company assignment is handled through create/update.
+    """
+
+    company_id = serializers.IntegerField(
+        source="company.id",
+        read_only=True,
+        allow_null=True,
+    )
+
+    company_name = serializers.CharField(
+        source="company.name",
+        read_only=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = User
+
         fields = [
             "id",
             "username",
@@ -28,18 +78,40 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "is_active",
+            "company_id",
+            "company_name",
         ]
-        read_only_fields = ["id"]
 
+        read_only_fields = [
+            "id",
+            "company_id",
+            "company_name",
+        ]
+
+
+# ============================================================
+# USER CREATE
+# ============================================================
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    """
+    Used when an ADMIN creates a technician or client.
+    """
+
     password = serializers.CharField(
         write_only=True,
         min_length=8,
     )
 
+    company = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = User
+
         fields = [
             "username",
             "email",
@@ -47,46 +119,180 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "last_name",
             "password",
             "role",
+            "company",
         ]
 
-    def validate_role(self, value):
-        if value == User.Role.ADMIN:
-            raise serializers.ValidationError(
-                "Admin users cannot be created through this endpoint."
-            )
+    def validate(self, attrs):
+        role = attrs.get("role")
+        company = attrs.get("company")
 
-        if value not in [
+        # ----------------------------------------------------
+        # ADMIN
+        # ----------------------------------------------------
+
+        if role == User.Role.ADMIN:
+            raise serializers.ValidationError({
+                "role": (
+                    "Admin users cannot be created "
+                    "through this endpoint."
+                )
+            })
+
+        # ----------------------------------------------------
+        # VALID ROLES
+        # ----------------------------------------------------
+
+        if role not in [
             User.Role.CLIENT,
             User.Role.TECHNICIAN,
         ]:
-            raise serializers.ValidationError(
-                "Invalid role."
-            )
+            raise serializers.ValidationError({
+                "role": "Invalid role."
+            })
 
-        return value
+        # ----------------------------------------------------
+        # CLIENT MUST HAVE A COMPANY
+        # ----------------------------------------------------
+
+        if role == User.Role.CLIENT and company is None:
+            raise serializers.ValidationError({
+                "company": (
+                    "A company is required when "
+                    "creating a client."
+                )
+            })
+
+        # ----------------------------------------------------
+        # TECHNICIANS
+        # ----------------------------------------------------
+        #
+        # Technicians can optionally belong to a company.
+        #
+        # If your business rule is that technicians MUST also
+        # belong to a company, change this to the same rule
+        # used for clients.
+        #
+
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
 
         user = User(**validated_data)
+
         user.set_password(password)
+
         user.save()
 
         return user
 
+
+# ============================================================
+# USER UPDATE
+# ============================================================
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Used when an ADMIN edits a technician or client.
+    """
+
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        min_length=8,
+    )
+
+    company = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = User
+
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "password",
+            "company",
+        ]
+
+    def validate(self, attrs):
+        role = attrs.get(
+            "role",
+            self.instance.role if self.instance else None,
+        )
+
+        company = attrs.get(
+            "company",
+            self.instance.company if self.instance else None,
+        )
+
+        # ----------------------------------------------------
+        # ADMIN
+        # ----------------------------------------------------
+
+        if role == User.Role.ADMIN:
+            raise serializers.ValidationError({
+                "role": (
+                    "Users cannot be created or changed "
+                    "to Administrator through this endpoint."
+                )
+            })
+
+        # ----------------------------------------------------
+        # CLIENT MUST HAVE COMPANY
+        # ----------------------------------------------------
+
+        if role == User.Role.CLIENT and company is None:
+            raise serializers.ValidationError({
+                "company": (
+                    "A company is required for clients."
+                )
+            })
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop(
+            "password",
+            None,
+        )
+
+        for attribute, value in validated_data.items():
+            setattr(instance, attribute, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+
+        return instance
+
+
+# ============================================================
+# ASSET
+# ============================================================
+
 class AssetSerializer(serializers.ModelSerializer):
+
     company_name = serializers.CharField(
         source="company.name",
-        read_only=True
+        read_only=True,
     )
 
     client_username = serializers.CharField(
         source="client.username",
-        read_only=True
+        read_only=True,
     )
 
     class Meta:
         model = Asset
+
         fields = [
             "id",
             "company",
@@ -115,6 +321,12 @@ class AssetSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+# ============================================================
+# MAINTENANCE REPORT PHOTO
+# ============================================================
+
 class MaintenanceReportPhotoSerializer(
     serializers.ModelSerializer
 ):
@@ -134,7 +346,12 @@ class MaintenanceReportPhotoSerializer(
         ]
 
 
+# ============================================================
+# MAINTENANCE REPORT
+# ============================================================
+
 class MaintenanceReportSerializer(serializers.ModelSerializer):
+
     technician_username = serializers.CharField(
         source="maintenance.technician.username",
         read_only=True,
@@ -144,10 +361,6 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
         source="maintenance.work_order.asset.id",
         read_only=True,
     )
-    photos = MaintenanceReportPhotoSerializer(
-    many=True,
-    read_only=True,
-)
 
     asset_name = serializers.CharField(
         source="maintenance.work_order.asset.name",
@@ -156,6 +369,11 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
 
     client_id = serializers.IntegerField(
         source="maintenance.work_order.client.id",
+        read_only=True,
+    )
+
+    photos = MaintenanceReportPhotoSerializer(
+        many=True,
         read_only=True,
     )
 
@@ -189,14 +407,20 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             "asset_id",
             "asset_name",
             "client_id",
+            "photos",
             "created_at",
             "updated_at",
-            "photos",
         ]
 
 
+# ============================================================
+# MAINTENANCE SCHEDULE
+# ============================================================
 
-class MaintenanceScheduleSerializer(serializers.ModelSerializer):
+class MaintenanceScheduleSerializer(
+    serializers.ModelSerializer
+):
+
     asset_name = serializers.CharField(
         source="asset.name",
         read_only=True,
@@ -208,7 +432,7 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
     )
 
     schedule_status = serializers.SerializerMethodField()
-    
+
     @extend_schema_field(serializers.CharField())
     def get_schedule_status(self, obj):
         return obj.schedule_status
@@ -242,20 +466,25 @@ class MaintenanceScheduleSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
+# ============================================================
+# MAINTENANCE
+# ============================================================
+
 class MaintenanceSerializer(serializers.ModelSerializer):
 
-    # ========================================================
+    # --------------------------------------------------------
     # TECHNICIAN
-    # ========================================================
+    # --------------------------------------------------------
 
     technician_username = serializers.CharField(
         source="technician.username",
         read_only=True,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # WORK ORDER
-    # ========================================================
+    # --------------------------------------------------------
 
     work_order_title = serializers.CharField(
         source="work_order.title",
@@ -272,9 +501,9 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # CLIENT
-    # ========================================================
+    # --------------------------------------------------------
 
     client_id = serializers.IntegerField(
         source="work_order.client.id",
@@ -301,43 +530,51 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    # ========================================================
-    # CLIENT COMPANY
-    # ========================================================
+    # --------------------------------------------------------
+    # COMPANY
+    # --------------------------------------------------------
 
     company_id = serializers.IntegerField(
         source="work_order.client.company.id",
         read_only=True,
+        allow_null=True,
     )
 
     company_name = serializers.CharField(
         source="work_order.client.company.name",
         read_only=True,
+        allow_null=True,
     )
 
     company_registration_number = serializers.CharField(
-        source="work_order.client.company.registration_number",
+        source=(
+            "work_order.client.company.registration_number"
+        ),
         read_only=True,
+        allow_null=True,
     )
 
     company_email = serializers.EmailField(
         source="work_order.client.company.email",
         read_only=True,
+        allow_null=True,
     )
 
     company_phone = serializers.CharField(
         source="work_order.client.company.phone",
         read_only=True,
+        allow_null=True,
     )
 
     company_address = serializers.CharField(
         source="work_order.client.company.address",
         read_only=True,
+        allow_null=True,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # ASSET
-    # ========================================================
+    # --------------------------------------------------------
 
     asset_id = serializers.IntegerField(
         source="work_order.asset.id",
@@ -363,7 +600,6 @@ class MaintenanceSerializer(serializers.ModelSerializer):
         model = Maintenance
 
         fields = [
-            # Maintenance
             "id",
 
             # Work order
@@ -434,7 +670,14 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+# ============================================================
+# WORK ORDER
+# ============================================================
+
 class WorkOrderSerializer(serializers.ModelSerializer):
+
     client_username = serializers.CharField(
         source="client.username",
         read_only=True,
@@ -476,31 +719,21 @@ class WorkOrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-class CompanySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Company
-        fields = [
-            "id",
-            "name",
-            "registration_number",
-            "email",
-            "phone",
-            "address",
-            "logo",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = [
-            "id",
-            "created_at",
-            "updated_at",
-        ]
+
+
+# ============================================================
+# PROFILE
+# ============================================================
 
 class ProfileSerializer(serializers.ModelSerializer):
-    company = CompanySerializer(read_only=True)
+
+    company = CompanySerializer(
+        read_only=True,
+    )
 
     class Meta:
         model = User
+
         fields = [
             "id",
             "username",
@@ -510,6 +743,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "role",
             "company",
         ]
+
         read_only_fields = [
             "id",
             "username",
@@ -517,9 +751,16 @@ class ProfileSerializer(serializers.ModelSerializer):
             "company",
         ]
 
-class MaintenanceReportReviewSerializer(serializers.Serializer):
+
+# ============================================================
+# MAINTENANCE REPORT REVIEW
+# ============================================================
+
+class MaintenanceReportReviewSerializer(
+    serializers.Serializer
+):
     action = serializers.ChoiceField(
-        choices=["ACCEPT", "REJECT"]
+        choices=["ACCEPT", "REJECT"],
     )
 
     comment = serializers.CharField(
@@ -527,34 +768,51 @@ class MaintenanceReportReviewSerializer(serializers.Serializer):
         allow_blank=True,
     )
 
-class MaintenanceReassignSerializer(serializers.Serializer):
+
+# ============================================================
+# MAINTENANCE REASSIGN
+# ============================================================
+
+class MaintenanceReassignSerializer(
+    serializers.Serializer
+):
     technician = serializers.IntegerField()
-    
+
+
+# ============================================================
+# MAINTENANCE REPORT PHOTO UPLOAD
+# ============================================================
+
 class MaintenanceReportPhotoUploadSerializer(
     serializers.Serializer
 ):
     image = serializers.ImageField()
 
     photo_type = serializers.ChoiceField(
-        choices=["ISSUE", "FIXED"]
+        choices=["ISSUE", "FIXED"],
     )
 
 
+# ============================================================
+# CHANGE PASSWORD
+# ============================================================
+
 class ChangePasswordSerializer(serializers.Serializer):
+
     current_password = serializers.CharField(
         write_only=True,
-        required=True
+        required=True,
     )
 
     new_password = serializers.CharField(
         write_only=True,
         required=True,
-        min_length=8
+        min_length=8,
     )
 
     confirm_password = serializers.CharField(
         write_only=True,
-        required=True
+        required=True,
     )
 
     def validate(self, attrs):
@@ -564,17 +822,30 @@ class ChangePasswordSerializer(serializers.Serializer):
             attrs["current_password"]
         ):
             raise serializers.ValidationError({
-                "current_password": "Current password is incorrect."
+                "current_password": (
+                    "Current password is incorrect."
+                )
             })
 
-        if attrs["new_password"] != attrs["confirm_password"]:
+        if (
+            attrs["new_password"]
+            != attrs["confirm_password"]
+        ):
             raise serializers.ValidationError({
-                "confirm_password": "Passwords do not match."
+                "confirm_password": (
+                    "Passwords do not match."
+                )
             })
 
-        if attrs["current_password"] == attrs["new_password"]:
+        if (
+            attrs["current_password"]
+            == attrs["new_password"]
+        ):
             raise serializers.ValidationError({
-                "new_password": "New password must be different from the current password."
+                "new_password": (
+                    "New password must be different "
+                    "from the current password."
+                )
             })
 
         return attrs
