@@ -6,8 +6,11 @@ paths:
   /api/assets/:
     get:
       operationId: assets_list
+      description: Admin sees all assets. Clients and technicians see assets belonging
+        to their company.
+      summary: List assets
       tags:
-      - assets
+      - Assets
       security:
       - jwtAuth: []
       responses:
@@ -21,8 +24,11 @@ paths:
           description: ''
     post:
       operationId: assets_create
+      description: Admin only. Creates an asset and automatically associates it with
+        the selected client's company.
+      summary: Create asset
       tags:
-      - assets
+      - Assets
       requestBody:
         content:
           application/json:
@@ -47,6 +53,7 @@ paths:
   /api/assets/{id}/:
     get:
       operationId: assets_retrieve
+      summary: Get asset
       parameters:
       - in: path
         name: id
@@ -54,7 +61,7 @@ paths:
           type: integer
         required: true
       tags:
-      - assets
+      - Assets
       security:
       - jwtAuth: []
       responses:
@@ -66,6 +73,7 @@ paths:
           description: ''
     put:
       operationId: assets_update
+      summary: Update asset
       parameters:
       - in: path
         name: id
@@ -73,7 +81,7 @@ paths:
           type: integer
         required: true
       tags:
-      - assets
+      - Assets
       requestBody:
         content:
           application/json:
@@ -97,6 +105,7 @@ paths:
           description: ''
     patch:
       operationId: assets_partial_update
+      summary: Partially update asset
       parameters:
       - in: path
         name: id
@@ -104,7 +113,7 @@ paths:
           type: integer
         required: true
       tags:
-      - assets
+      - Assets
       requestBody:
         content:
           application/json:
@@ -127,6 +136,7 @@ paths:
           description: ''
     delete:
       operationId: assets_destroy
+      summary: Delete asset
       parameters:
       - in: path
         name: id
@@ -134,7 +144,7 @@ paths:
           type: integer
         required: true
       tags:
-      - assets
+      - Assets
       security:
       - jwtAuth: []
       responses:
@@ -143,14 +153,23 @@ paths:
   /api/assets/{id}/qr/:
     get:
       operationId: assets_qr_retrieve
+      description: Admin only. Generates and returns the PNG QR code associated with
+        an asset.
+      summary: Generate asset QR code
       parameters:
       - in: path
         name: id
         schema:
           type: integer
         required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: Asset ID
+        required: true
       tags:
-      - assets
+      - QR Codes
       security:
       - jwtAuth: []
       responses:
@@ -160,12 +179,44 @@ paths:
               schema:
                 type: string
                 format: binary
-          description: ''
+          description: PNG QR code image.
+        '400':
+          description: QR code is inactive.
+        '404':
+          description: Asset not found.
+  /api/auth/change-password/:
+    post:
+      operationId: auth_change_password_create
+      description: Changes the password of the currently authenticated user.
+      summary: Change password
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Password changed successfully.
+        '400':
+          description: Invalid password data.
   /api/auth/me/:
     get:
       operationId: auth_me_retrieve
+      description: Returns information about the currently authenticated user.
+      summary: Get current authenticated user
       tags:
-      - auth
+      - Profile
       security:
       - jwtAuth: []
       responses:
@@ -232,8 +283,10 @@ paths:
   /api/companies/:
     get:
       operationId: companies_list
+      description: Returns all companies ordered alphabetically by name.
+      summary: List companies
       tags:
-      - companies
+      - Companies
       security:
       - jwtAuth: []
       responses:
@@ -247,8 +300,9 @@ paths:
           description: ''
     post:
       operationId: companies_create
+      summary: Create company
       tags:
-      - companies
+      - Companies
       requestBody:
         content:
           application/json:
@@ -273,6 +327,7 @@ paths:
   /api/companies/{id}/:
     get:
       operationId: companies_retrieve
+      summary: Get company
       parameters:
       - in: path
         name: id
@@ -280,7 +335,7 @@ paths:
           type: integer
         required: true
       tags:
-      - companies
+      - Companies
       security:
       - jwtAuth: []
       responses:
@@ -292,6 +347,7 @@ paths:
           description: ''
     put:
       operationId: companies_update
+      summary: Update company
       parameters:
       - in: path
         name: id
@@ -299,7 +355,7 @@ paths:
           type: integer
         required: true
       tags:
-      - companies
+      - Companies
       requestBody:
         content:
           application/json:
@@ -323,6 +379,7 @@ paths:
           description: ''
     patch:
       operationId: companies_partial_update
+      summary: Partially update company
       parameters:
       - in: path
         name: id
@@ -330,7 +387,7 @@ paths:
           type: integer
         required: true
       tags:
-      - companies
+      - Companies
       requestBody:
         content:
           application/json:
@@ -353,6 +410,7 @@ paths:
           description: ''
     delete:
       operationId: companies_destroy
+      summary: Delete company
       parameters:
       - in: path
         name: id
@@ -360,7 +418,7 @@ paths:
           type: integer
         required: true
       tags:
-      - companies
+      - Companies
       security:
       - jwtAuth: []
       responses:
@@ -369,8 +427,11 @@ paths:
   /api/maintenance/:
     get:
       operationId: maintenance_list
+      description: Admin sees all maintenance tasks. Technicians see only their assigned
+        maintenance.
+      summary: List maintenance tasks
       tags:
-      - maintenance
+      - Maintenance
       security:
       - jwtAuth: []
       responses:
@@ -384,8 +445,10 @@ paths:
           description: ''
     post:
       operationId: maintenance_create
+      description: Admin only. Assigns maintenance to a technician.
+      summary: Create maintenance task
       tags:
-      - maintenance
+      - Maintenance
       requestBody:
         content:
           application/json:
@@ -410,8 +473,11 @@ paths:
   /api/maintenance-reports/:
     get:
       operationId: maintenance_reports_list
+      description: Admin sees all reports. Technicians see reports for their assigned
+        maintenance. Clients see reports associated with their work orders.
+      summary: List maintenance reports
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       security:
       - jwtAuth: []
       responses:
@@ -425,8 +491,10 @@ paths:
           description: ''
     post:
       operationId: maintenance_reports_create
+      description: Technicians can create reports for their assigned maintenance tasks.
+      summary: Create maintenance report
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       requestBody:
         content:
           application/json:
@@ -451,6 +519,7 @@ paths:
   /api/maintenance-reports/{id}/:
     get:
       operationId: maintenance_reports_retrieve
+      summary: Get maintenance report
       parameters:
       - in: path
         name: id
@@ -458,7 +527,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       security:
       - jwtAuth: []
       responses:
@@ -470,6 +539,7 @@ paths:
           description: ''
     put:
       operationId: maintenance_reports_update
+      summary: Update maintenance report
       parameters:
       - in: path
         name: id
@@ -477,7 +547,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       requestBody:
         content:
           application/json:
@@ -501,6 +571,7 @@ paths:
           description: ''
     patch:
       operationId: maintenance_reports_partial_update
+      summary: Partially update maintenance report
       parameters:
       - in: path
         name: id
@@ -508,7 +579,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       requestBody:
         content:
           application/json:
@@ -532,6 +603,9 @@ paths:
   /api/maintenance-reports/{id}/photos/:
     post:
       operationId: maintenance_reports_photos_create
+      description: Admin or the assigned technician can upload an image to a maintenance
+        report.
+      summary: Upload maintenance report photo
       parameters:
       - in: path
         name: id
@@ -539,7 +613,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       requestBody:
         content:
           application/json:
@@ -555,15 +629,20 @@ paths:
       security:
       - jwtAuth: []
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MaintenanceReportPhotoUpload'
-          description: ''
+        '201':
+          description: Maintenance report photo uploaded successfully.
+        '400':
+          description: Image or photo type is invalid.
+        '403':
+          description: User is not allowed to upload this photo.
+        '404':
+          description: Maintenance report not found.
   /api/maintenance-reports/{id}/reassign/:
     post:
       operationId: maintenance_reports_reassign_create
+      description: Admin only. Reassigns a rejected maintenance report to another
+        technician.
+      summary: Reassign rejected maintenance
       parameters:
       - in: path
         name: id
@@ -571,7 +650,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance
       requestBody:
         content:
           application/json:
@@ -588,14 +667,16 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MaintenanceReassign'
-          description: ''
+          description: Maintenance reassigned successfully.
+        '400':
+          description: Invalid reassignment request.
+        '404':
+          description: Maintenance report not found.
   /api/maintenance-reports/{id}/review/:
     post:
       operationId: maintenance_reports_review_create
+      description: Allows a client to accept or reject a completed maintenance report.
+      summary: Accept or reject maintenance report
       parameters:
       - in: path
         name: id
@@ -603,7 +684,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       requestBody:
         content:
           application/json:
@@ -620,16 +701,21 @@ paths:
       - jwtAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MaintenanceReportReview'
-          description: ''
+          description: Maintenance report review processed successfully.
+        '400':
+          description: Invalid review or report cannot be reviewed.
+        '403':
+          description: User is not allowed to review this report.
+        '404':
+          description: Maintenance report not found.
   /api/maintenance-reports/rejected/:
     get:
       operationId: maintenance_reports_rejected_list
+      description: Admin only. Returns maintenance reports that were rejected by clients
+        and require administrative action.
+      summary: List rejected maintenance reports
       tags:
-      - maintenance-reports
+      - Maintenance Reports
       security:
       - jwtAuth: []
       responses:
@@ -644,8 +730,9 @@ paths:
   /api/maintenance-schedules/:
     get:
       operationId: maintenance_schedules_list
+      summary: List maintenance schedules
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       security:
       - jwtAuth: []
       responses:
@@ -659,8 +746,11 @@ paths:
           description: ''
     post:
       operationId: maintenance_schedules_create
+      description: Admin only. Creates a maintenance schedule and automatically calculates
+        the first maintenance date.
+      summary: Create maintenance schedule
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       requestBody:
         content:
           application/json:
@@ -685,6 +775,7 @@ paths:
   /api/maintenance-schedules/{id}/:
     get:
       operationId: maintenance_schedules_retrieve
+      summary: Get maintenance schedule
       parameters:
       - in: path
         name: id
@@ -692,7 +783,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       security:
       - jwtAuth: []
       responses:
@@ -704,6 +795,7 @@ paths:
           description: ''
     put:
       operationId: maintenance_schedules_update
+      summary: Update maintenance schedule
       parameters:
       - in: path
         name: id
@@ -711,7 +803,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       requestBody:
         content:
           application/json:
@@ -735,6 +827,7 @@ paths:
           description: ''
     patch:
       operationId: maintenance_schedules_partial_update
+      summary: Partially update maintenance schedule
       parameters:
       - in: path
         name: id
@@ -742,7 +835,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       requestBody:
         content:
           application/json:
@@ -765,6 +858,7 @@ paths:
           description: ''
     delete:
       operationId: maintenance_schedules_destroy
+      summary: Delete maintenance schedule
       parameters:
       - in: path
         name: id
@@ -772,7 +866,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance-schedules
+      - Maintenance Schedules
       security:
       - jwtAuth: []
       responses:
@@ -781,6 +875,7 @@ paths:
   /api/maintenance/{id}/:
     get:
       operationId: maintenance_retrieve
+      summary: Get maintenance task
       parameters:
       - in: path
         name: id
@@ -788,7 +883,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance
+      - Maintenance
       security:
       - jwtAuth: []
       responses:
@@ -800,6 +895,7 @@ paths:
           description: ''
     put:
       operationId: maintenance_update
+      summary: Update maintenance task
       parameters:
       - in: path
         name: id
@@ -807,7 +903,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance
+      - Maintenance
       requestBody:
         content:
           application/json:
@@ -831,6 +927,7 @@ paths:
           description: ''
     patch:
       operationId: maintenance_partial_update
+      summary: Partially update maintenance task
       parameters:
       - in: path
         name: id
@@ -838,7 +935,7 @@ paths:
           type: integer
         required: true
       tags:
-      - maintenance
+      - Maintenance
       requestBody:
         content:
           application/json:
@@ -862,8 +959,10 @@ paths:
   /api/profile/:
     get:
       operationId: profile_retrieve
+      description: Returns the profile of the currently authenticated user.
+      summary: Get current user profile
       tags:
-      - profile
+      - Profile
       security:
       - jwtAuth: []
       responses:
@@ -875,8 +974,9 @@ paths:
           description: ''
     put:
       operationId: profile_update
+      summary: Update current user profile
       tags:
-      - profile
+      - Profile
       requestBody:
         content:
           application/json:
@@ -899,8 +999,9 @@ paths:
           description: ''
     patch:
       operationId: profile_partial_update
+      summary: Partially update current user profile
       tags:
-      - profile
+      - Profile
       requestBody:
         content:
           application/json:
@@ -924,35 +1025,28 @@ paths:
   /api/qr/scan/{token}/:
     post:
       operationId: qr_scan_create
+      description: Scans an asset QR token. The authenticated user must be an Admin
+        or Technician. A successful scan returns the asset information and the latest
+        active maintenance assignment for the authenticated technician.
+      summary: Scan an asset QR code
       parameters:
       - in: path
         name: token
         schema:
           type: string
+        description: The asset QR token.
         required: true
       tags:
-      - qr
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Asset'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Asset'
-        required: true
+      - QR Code
       security:
       - jwtAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Asset'
-          description: ''
+          description: QR code scanned successfully.
+        '403':
+          description: QR code has been revoked.
+        '404':
+          description: Invalid QR code.
   /api/schema/:
     get:
       operationId: schema_retrieve
@@ -1102,8 +1196,10 @@ paths:
   /api/users/:
     get:
       operationId: users_list
+      description: Admin only. Returns all users.
+      summary: List users
       tags:
-      - users
+      - Users
       security:
       - jwtAuth: []
       responses:
@@ -1117,8 +1213,10 @@ paths:
           description: ''
     post:
       operationId: users_create
+      description: Admin only. Creates a new user and assigns their role.
+      summary: Create user
       tags:
-      - users
+      - Users
       requestBody:
         content:
           application/json:
@@ -1143,6 +1241,7 @@ paths:
   /api/users/{id}/:
     get:
       operationId: users_retrieve
+      summary: Get user
       parameters:
       - in: path
         name: id
@@ -1150,7 +1249,7 @@ paths:
           type: integer
         required: true
       tags:
-      - users
+      - Users
       security:
       - jwtAuth: []
       responses:
@@ -1162,6 +1261,7 @@ paths:
           description: ''
     put:
       operationId: users_update
+      summary: Update user
       parameters:
       - in: path
         name: id
@@ -1169,7 +1269,7 @@ paths:
           type: integer
         required: true
       tags:
-      - users
+      - Users
       requestBody:
         content:
           application/json:
@@ -1193,6 +1293,7 @@ paths:
           description: ''
     patch:
       operationId: users_partial_update
+      summary: Partially update user
       parameters:
       - in: path
         name: id
@@ -1200,7 +1301,7 @@ paths:
           type: integer
         required: true
       tags:
-      - users
+      - Users
       requestBody:
         content:
           application/json:
@@ -1223,6 +1324,7 @@ paths:
           description: ''
     delete:
       operationId: users_destroy
+      summary: Delete user
       parameters:
       - in: path
         name: id
@@ -1230,7 +1332,7 @@ paths:
           type: integer
         required: true
       tags:
-      - users
+      - Users
       security:
       - jwtAuth: []
       responses:
@@ -1239,8 +1341,11 @@ paths:
   /api/work-orders/:
     get:
       operationId: work_orders_list
+      description: Admin sees all work orders. Clients see their own work orders.
+        Technicians do not manage work orders.
+      summary: List work orders
       tags:
-      - work-orders
+      - Work Orders
       security:
       - jwtAuth: []
       responses:
@@ -1254,8 +1359,10 @@ paths:
           description: ''
     post:
       operationId: work_orders_create
+      description: Admin or client can create a work order according to their role.
+      summary: Create work order
       tags:
-      - work-orders
+      - Work Orders
       requestBody:
         content:
           application/json:
@@ -1280,6 +1387,7 @@ paths:
   /api/work-orders/{id}/:
     get:
       operationId: work_orders_retrieve
+      summary: Get work order
       parameters:
       - in: path
         name: id
@@ -1287,7 +1395,7 @@ paths:
           type: integer
         required: true
       tags:
-      - work-orders
+      - Work Orders
       security:
       - jwtAuth: []
       responses:
@@ -1299,6 +1407,7 @@ paths:
           description: ''
     put:
       operationId: work_orders_update
+      summary: Update work order
       parameters:
       - in: path
         name: id
@@ -1306,7 +1415,7 @@ paths:
           type: integer
         required: true
       tags:
-      - work-orders
+      - Work Orders
       requestBody:
         content:
           application/json:
@@ -1330,6 +1439,7 @@ paths:
           description: ''
     patch:
       operationId: work_orders_partial_update
+      summary: Partially update work order
       parameters:
       - in: path
         name: id
@@ -1337,7 +1447,7 @@ paths:
           type: integer
         required: true
       tags:
-      - work-orders
+      - Work Orders
       requestBody:
         content:
           application/json:
@@ -1360,6 +1470,7 @@ paths:
           description: ''
     delete:
       operationId: work_orders_destroy
+      summary: Delete work order
       parameters:
       - in: path
         name: id
@@ -1367,22 +1478,50 @@ paths:
           type: integer
         required: true
       tags:
-      - work-orders
+      - Work Orders
       security:
       - jwtAuth: []
       responses:
         '204':
           description: No response body
+  /api/work-orders/{id}/respond/:
+    post:
+      operationId: work_orders_respond_create
+      description: Allows a client to accept or reject a work order.
+      summary: Accept or reject work order
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Work Orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderResponse'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderResponse'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderResponse'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Work order response processed successfully.
+        '400':
+          description: Work order cannot receive another response.
+        '403':
+          description: Only clients can respond to work orders.
+        '404':
+          description: Work order not found.
 components:
   schemas:
-    ActionEnum:
-      enum:
-      - ACCEPT
-      - REJECT
-      type: string
-      description: |-
-        * `ACCEPT` - ACCEPT
-        * `REJECT` - REJECT
     Asset:
       type: object
       properties:
@@ -1446,6 +1585,23 @@ components:
       - qr_revoked_at
       - serial_number
       - updated_at
+    ChangePassword:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        confirm_password:
+          type: string
+          writeOnly: true
+      required:
+      - confirm_password
+      - current_password
+      - new_password
     Company:
       type: object
       properties:
@@ -1520,22 +1676,28 @@ components:
         company_id:
           type: integer
           readOnly: true
+          nullable: true
         company_name:
           type: string
           readOnly: true
+          nullable: true
         company_registration_number:
           type: string
           readOnly: true
+          nullable: true
         company_email:
           type: string
           format: email
           readOnly: true
+          nullable: true
         company_phone:
           type: string
           readOnly: true
+          nullable: true
         company_address:
           type: string
           readOnly: true
+          nullable: true
         client_id:
           type: integer
           readOnly: true
@@ -1731,11 +1893,19 @@ components:
       type: object
       properties:
         action:
-          $ref: '#/components/schemas/ActionEnum'
+          $ref: '#/components/schemas/MaintenanceReportReviewActionEnum'
         comment:
           type: string
       required:
       - action
+    MaintenanceReportReviewActionEnum:
+      enum:
+      - ACCEPT
+      - REJECT
+      type: string
+      description: |-
+        * `ACCEPT` - ACCEPT
+        * `REJECT` - REJECT
     MaintenanceReportStatusEnum:
       enum:
       - OPEN
@@ -1920,22 +2090,28 @@ components:
         company_id:
           type: integer
           readOnly: true
+          nullable: true
         company_name:
           type: string
           readOnly: true
+          nullable: true
         company_registration_number:
           type: string
           readOnly: true
+          nullable: true
         company_email:
           type: string
           format: email
           readOnly: true
+          nullable: true
         company_phone:
           type: string
           readOnly: true
+          nullable: true
         company_address:
           type: string
           readOnly: true
+          nullable: true
         client_id:
           type: integer
           readOnly: true
@@ -2114,6 +2290,11 @@ components:
           readOnly: true
     PatchedUser:
       type: object
+      description: |-
+        Used when returning users.
+
+        company_id and company_name are read-only because the
+        company assignment is handled through create/update.
       properties:
         id:
           type: integer
@@ -2145,6 +2326,14 @@ components:
           title: Active
           description: Designates whether this user should be treated as active. Unselect
             this instead of deleting accounts.
+        company_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+          nullable: true
     PatchedWorkOrder:
       type: object
       properties:
@@ -2174,6 +2363,14 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
+        client_response_comment:
+          type: string
+          readOnly: true
+        client_responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -2285,6 +2482,11 @@ components:
       - refresh
     User:
       type: object
+      description: |-
+        Used when returning users.
+
+        company_id and company_name are read-only because the
+        company assignment is handled through create/update.
       properties:
         id:
           type: integer
@@ -2316,11 +2518,22 @@ components:
           title: Active
           description: Designates whether this user should be treated as active. Unselect
             this instead of deleting accounts.
+        company_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        company_name:
+          type: string
+          readOnly: true
+          nullable: true
       required:
+      - company_id
+      - company_name
       - id
       - username
     UserCreate:
       type: object
+      description: Used when an ADMIN creates a technician or client.
       properties:
         username:
           type: string
@@ -2348,6 +2561,9 @@ components:
           minLength: 8
         role:
           $ref: '#/components/schemas/RoleEnum'
+        company:
+          type: integer
+          nullable: true
       required:
       - password
       - username
@@ -2380,6 +2596,14 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
+        client_response_comment:
+          type: string
+          readOnly: true
+        client_responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -2392,6 +2616,8 @@ components:
       - asset
       - asset_name
       - client
+      - client_responded_at
+      - client_response_comment
       - client_username
       - company_name
       - created_at
@@ -2399,6 +2625,23 @@ components:
       - id
       - title
       - updated_at
+    WorkOrderResponse:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/WorkOrderResponseActionEnum'
+        comment:
+          type: string
+      required:
+      - action
+    WorkOrderResponseActionEnum:
+      enum:
+      - ACCEPT
+      - REJECT
+      type: string
+      description: |-
+        * `ACCEPT` - Accept
+        * `REJECT` - Reject
     WorkOrderStatusEnum:
       enum:
       - PENDING

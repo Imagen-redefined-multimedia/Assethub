@@ -1,10 +1,10 @@
+
 """
 URL configuration for backend project.
 """
 
 from django.contrib import admin
 from django.urls import path
-
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -21,11 +21,14 @@ from drf_spectacular.views import (
 
 from api.views import (
     ChangePasswordView,
-    CompanyDetailView,
-    CompanyListCreateView,
-    MaintenanceReportPhotoUploadView,
+
+    # Authentication / Profile
     MeView,
     ProfileView,
+
+    # Companies
+    CompanyListCreateView,
+    CompanyDetailView,
 
     # Users
     UserListCreateView,
@@ -35,6 +38,8 @@ from api.views import (
     AssetListCreateView,
     AssetDetailView,
     AssetQRCodeView,
+
+    # QR Scanning
     QRScanView,
 
     # Maintenance
@@ -49,6 +54,7 @@ from api.views import (
     MaintenanceReportReviewView,
     RejectedMaintenanceReportListView,
     MaintenanceReassignView,
+    MaintenanceReportPhotoUploadView,
 
     # Work Orders
     WorkOrderListCreateView,
@@ -68,6 +74,31 @@ urlpatterns = [
         admin.site.urls,
     ),
 
+    # ========================================================
+    # SWAGGER / OPENAPI
+    # ========================================================
+
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(),
+        name="schema",
+    ),
+
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(
+            url_name="schema",
+        ),
+        name="swagger-ui",
+    ),
+
+    path(
+        "api/redoc/",
+        SpectacularRedocView.as_view(
+            url_name="schema",
+        ),
+        name="redoc",
+    ),
 
     # ========================================================
     # AUTHENTICATION
@@ -91,6 +122,37 @@ urlpatterns = [
         name="me",
     ),
 
+    path(
+        "api/auth/change-password/",
+        ChangePasswordView.as_view(),
+        name="change-password",
+    ),
+
+    # ========================================================
+    # PROFILE
+    # ========================================================
+
+    path(
+        "api/profile/",
+        ProfileView.as_view(),
+        name="profile",
+    ),
+
+    # ========================================================
+    # COMPANIES
+    # ========================================================
+
+    path(
+        "api/companies/",
+        CompanyListCreateView.as_view(),
+        name="company-list-create",
+    ),
+
+    path(
+        "api/companies/<int:pk>/",
+        CompanyDetailView.as_view(),
+        name="company-detail",
+    ),
 
     # ========================================================
     # USERS
@@ -107,7 +169,6 @@ urlpatterns = [
         UserDetailView.as_view(),
         name="user-detail",
     ),
-
 
     # ========================================================
     # ASSETS
@@ -131,7 +192,6 @@ urlpatterns = [
         name="asset-qr",
     ),
 
-
     # ========================================================
     # QR SCANNING
     # ========================================================
@@ -141,7 +201,6 @@ urlpatterns = [
         QRScanView.as_view(),
         name="qr-scan",
     ),
-
 
     # ========================================================
     # MAINTENANCE SCHEDULES
@@ -159,7 +218,6 @@ urlpatterns = [
         name="maintenance-schedule-detail",
     ),
 
-
     # ========================================================
     # MAINTENANCE
     # ========================================================
@@ -175,24 +233,6 @@ urlpatterns = [
         MaintenanceDetailView.as_view(),
         name="maintenance-detail",
     ),
-
-
-    # ========================================================
-    # WORK ORDERS
-    # ========================================================
-
-    path(
-        "api/work-orders/",
-        WorkOrderListCreateView.as_view(),
-        name="work-order-list-create",
-    ),
-
-    path(
-        "api/work-orders/<int:pk>/",
-        WorkOrderDetailView.as_view(),
-        name="work-order-detail",
-    ),
-
 
     # ========================================================
     # MAINTENANCE REPORTS
@@ -210,9 +250,8 @@ urlpatterns = [
         name="maintenance-report-detail",
     ),
 
-
     # ========================================================
-    # CLIENT REVIEW
+    # CLIENT - REVIEW MAINTENANCE REPORT
     # ========================================================
 
     path(
@@ -220,7 +259,6 @@ urlpatterns = [
         MaintenanceReportReviewView.as_view(),
         name="maintenance-report-review",
     ),
-
 
     # ========================================================
     # ADMIN - REJECTED REPORTS
@@ -232,7 +270,6 @@ urlpatterns = [
         name="rejected-maintenance-reports",
     ),
 
-
     # ========================================================
     # ADMIN - REASSIGN MAINTENANCE
     # ========================================================
@@ -243,71 +280,50 @@ urlpatterns = [
         name="maintenance-reassign",
     ),
 
+    # ========================================================
+    # MAINTENANCE REPORT PHOTOS
+    # ========================================================
+
     path(
-    "api/profile/",
-    ProfileView.as_view(),
-    name="profile",
-),
-
-path(
-    "api/companies/",
-    CompanyListCreateView.as_view(),
-    name="company-list-create",
-),
-
-path(
-    "api/companies/<int:pk>/",
-    CompanyDetailView.as_view(),
-    name="company-detail",
-),
-
-path(
-    "api/maintenance-reports/<int:pk>/photos/",
-    MaintenanceReportPhotoUploadView.as_view(),
-    name="maintenance-report-photo-upload",
-),
-
-path(
-    "api/schema/",
-    SpectacularAPIView.as_view(),
-    name="schema",
-),
-
-path(
-    "api/docs/",
-    SpectacularSwaggerView.as_view(
-        url_name="schema"
+        "api/maintenance-reports/<int:pk>/photos/",
+        MaintenanceReportPhotoUploadView.as_view(),
+        name="maintenance-report-photo-upload",
     ),
-    name="swagger-ui",
-),
 
-path(
-    "api/redoc/",
-    SpectacularRedocView.as_view(
-        url_name="schema"
+    # ========================================================
+    # WORK ORDERS
+    # ========================================================
+
+    path(
+        "api/work-orders/",
+        WorkOrderListCreateView.as_view(),
+        name="work-order-list-create",
     ),
-    name="redoc",
-),
 
-path(
-    "auth/change-password/",
-    ChangePasswordView.as_view(),
-    name="change-password",
-),
+    path(
+        "api/work-orders/<int:pk>/",
+        WorkOrderDetailView.as_view(),
+        name="work-order-detail",
+    ),
 
-# ========================================================
-# CLIENT - ACCEPT / REJECT WORK ORDER
-# ========================================================
+    # ========================================================
+    # CLIENT - ACCEPT / REJECT WORK ORDER
+    # ========================================================
 
-path(
-    "api/work-orders/<int:pk>/respond/",
-    WorkOrderResponseView.as_view(),
-    name="work-order-response",
-),
-
+    path(
+        "api/work-orders/<int:pk>/respond/",
+        WorkOrderResponseView.as_view(),
+        name="work-order-response",
+    ),
 ]
+
+
+# ============================================================
+# MEDIA FILES
+# ============================================================
 
 urlpatterns += static(
     settings.MEDIA_URL,
     document_root=settings.MEDIA_ROOT,
 )
+

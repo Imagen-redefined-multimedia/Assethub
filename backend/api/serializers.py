@@ -883,7 +883,7 @@ class WorkOrderResponseSerializer(serializers.Serializer):
     comment = serializers.CharField(
         required=False,
         allow_blank=True,
-        default="",
+        trim_whitespace=True,
     )
 
     def validate(self, attrs):
@@ -892,12 +892,14 @@ class WorkOrderResponseSerializer(serializers.Serializer):
         comment = attrs.get("comment", "").strip()
 
         if action == "REJECT" and not comment:
-            raise serializers.ValidationError({
-                "comment": (
-                    "A comment is required when rejecting "
-                    "a work order."
-                )
-            })
+            raise serializers.ValidationError(
+                {
+                    "comment": (
+                        "A comment is required "
+                        "when rejecting a work order."
+                    )
+                }
+            )
 
         attrs["comment"] = comment
 

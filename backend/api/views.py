@@ -1,5 +1,11 @@
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import ( extend_schema, OpenApiRequest)
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiParameter,
+    OpenApiResponse,
+)
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
@@ -53,10 +59,26 @@ from .serializers import (
 User = get_user_model()
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Profile"],
+        summary="Get current user profile",
+        description="Returns the profile of the currently authenticated user.",
+    ),
+    put=extend_schema(
+        tags=["Profile"],
+        summary="Update current user profile",
+    ),
+    patch=extend_schema(
+        tags=["Profile"],
+        summary="Partially update current user profile",
+    ),
+)
 class ProfileView(
     generics.RetrieveUpdateAPIView
 ):
     serializer_class = ProfileSerializer
+
     permission_classes = [
         IsAuthenticated,
     ]
@@ -64,24 +86,56 @@ class ProfileView(
     def get_object(self):
         return self.request.user
 
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Companies"],
+        summary="List companies",
+        description="Returns all companies ordered alphabetically by name.",
+    ),
+    post=extend_schema(
+        tags=["Companies"],
+        summary="Create company",
+    ),
+)
 class CompanyListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = CompanySerializer
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
     ]
 
     def get_queryset(self):
-        return Company.objects.all().order_by(
-            "name"
-        )
+        return Company.objects.all().order_by("name")
 
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Companies"],
+        summary="Get company",
+    ),
+    put=extend_schema(
+        tags=["Companies"],
+        summary="Update company",
+    ),
+    patch=extend_schema(
+        tags=["Companies"],
+        summary="Partially update company",
+    ),
+    delete=extend_schema(
+        tags=["Companies"],
+        summary="Delete company",
+    ),
+)
 class CompanyDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = CompanySerializer
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
@@ -92,9 +146,15 @@ class CompanyDetailView(
 # CURRENT USER
 # ============================================================
 @extend_schema(
-    responses=UserSerializer,
+    tags=["Profile"],
+    summary="Get current authenticated user",
+    description="Returns information about the currently authenticated user.",
+    responses={
+        200: UserSerializer,
+    },
 )
 class MeView(APIView):
+
     permission_classes = [
         IsAuthenticated,
     ]
@@ -103,13 +163,27 @@ class MeView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
-
 # ============================================================
 # USERS
 # ADMIN ONLY
 # ============================================================
 
-class UserListCreateView(generics.ListCreateAPIView):
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Users"],
+        summary="List users",
+        description="Admin only. Returns all users.",
+    ),
+    post=extend_schema(
+        tags=["Users"],
+        summary="Create user",
+        description="Admin only. Creates a new user and assigns their role.",
+    ),
+)
+class UserListCreateView(
+    generics.ListCreateAPIView
+):
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
@@ -119,15 +193,35 @@ class UserListCreateView(generics.ListCreateAPIView):
         return User.objects.all().order_by("id")
 
     def get_serializer_class(self):
+
         if self.request.method == "POST":
             return UserCreateSerializer
 
         return UserSerializer
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Users"],
+        summary="Get user",
+    ),
+    put=extend_schema(
+        tags=["Users"],
+        summary="Update user",
+    ),
+    patch=extend_schema(
+        tags=["Users"],
+        summary="Partially update user",
+    ),
+    delete=extend_schema(
+        tags=["Users"],
+        summary="Delete user",
+    ),
+)
 class UserDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
@@ -135,15 +229,35 @@ class UserDetailView(
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
-
 # ============================================================
 # ASSETS
 # ============================================================
-class AssetListCreateView(generics.ListCreateAPIView):
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Assets"],
+        summary="List assets",
+        description=(
+            "Admin sees all assets. "
+            "Clients and technicians see assets belonging to their company."
+        ),
+    ),
+    post=extend_schema(
+        tags=["Assets"],
+        summary="Create asset",
+        description=(
+            "Admin only. Creates an asset and automatically "
+            "associates it with the selected client's company."
+        ),
+)
+)
+class AssetListCreateView(
+    generics.ListCreateAPIView
+):
+
     serializer_class = AssetSerializer
 
     def get_permissions(self):
+
         if self.request.method == "POST":
             return [
                 IsAuthenticated(),
@@ -155,17 +269,18 @@ class AssetListCreateView(generics.ListCreateAPIView):
         ]
 
     def get_queryset(self):
+
         user = self.request.user
 
-        # ADMIN
         if user.role == User.Role.ADMIN:
+
             return Asset.objects.select_related(
                 "company",
                 "client",
             ).all().order_by("-created_at")
 
-        # CLIENT
         if user.role == User.Role.CLIENT:
+
             return Asset.objects.select_related(
                 "company",
                 "client",
@@ -173,8 +288,8 @@ class AssetListCreateView(generics.ListCreateAPIView):
                 company=user.company
             ).order_by("-created_at")
 
-        # TECHNICIAN
         if user.role == User.Role.TECHNICIAN:
+
             return Asset.objects.select_related(
                 "company",
                 "client",
@@ -188,49 +303,92 @@ class AssetListCreateView(generics.ListCreateAPIView):
 
         client = serializer.validated_data["client"]
 
-        # Make sure the selected user is a client
         if client.role != User.Role.CLIENT:
             raise ValidationError(
                 "Asset can only be assigned to a client."
             )
 
-        # Make sure the client belongs to a company
         if not client.company:
             raise ValidationError(
                 "This client is not associated with a company."
             )
 
-        # Automatically attach the client's company
         serializer.save(
             company=client.company
         )
 
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Assets"],
+        summary="Get asset",
+    ),
+    put=extend_schema(
+        tags=["Assets"],
+        summary="Update asset",
+    ),
+    patch=extend_schema(
+        tags=["Assets"],
+        summary="Partially update asset",
+    ),
+    delete=extend_schema(
+        tags=["Assets"],
+        summary="Delete asset",
+    ),
+)
 class AssetDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
+
     serializer_class = AssetSerializer
+
     queryset = Asset.objects.select_related(
         "company",
         "client",
     )
 
     def get_permissions(self):
+
         return [
             IsAuthenticated(),
             IsAdminOrOwnCompany(),
         ]
-
 
 # ============================================================
 # ASSET QR CODE
 # ADMIN ONLY
 # ============================================================
 @extend_schema(
+    tags=["QR Codes"],
+    summary="Generate asset QR code",
+    description=(
+        "Admin only. Generates and returns the PNG QR code "
+        "associated with an asset."
+    ),
+    parameters=[
+        OpenApiParameter(
+            name="pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            required=True,
+            description="Asset ID",
+        ),
+    ],
     responses={
-        200: OpenApiTypes.BINARY,
-    }
+        200: OpenApiResponse(
+            response=OpenApiTypes.BINARY,
+            description="PNG QR code image.",
+        ),
+        400: OpenApiResponse(
+            description="QR code is inactive.",
+        ),
+        404: OpenApiResponse(
+            description="Asset not found.",
+        ),
+    },
 )
 class AssetQRCodeView(APIView):
+
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
@@ -242,6 +400,7 @@ class AssetQRCodeView(APIView):
             asset = Asset.objects.get(pk=pk)
 
         except Asset.DoesNotExist:
+
             return Response(
                 {
                     "detail": "Asset not found."
@@ -250,6 +409,7 @@ class AssetQRCodeView(APIView):
             )
 
         if not asset.qr_active:
+
             return Response(
                 {
                     "detail": "QR code is inactive."
@@ -258,9 +418,9 @@ class AssetQRCodeView(APIView):
             )
 
         qr_url = (
-                f"{settings.ASSETHUB_FRONTEND_URL}"
-                f"/assets/qr-scanner/{asset.qr_token}"
-            )
+            f"{settings.ASSETHUB_FRONTEND_URL}"
+            f"/assets/qr-scanner/{asset.qr_token}"
+        )
 
         qr = qrcode.QRCode(
             version=1,
@@ -285,6 +445,14 @@ class AssetQRCodeView(APIView):
 
         return response
 
+# ============================================================
+# QR SCANNING
+# ADMIN + TECHNICIAN
+# ============================================================
+# ============================================================
+# QR SCANNING
+# ADMIN + TECHNICIAN
+# ============================================================
 
 # ============================================================
 # QR SCANNING
@@ -293,19 +461,42 @@ class AssetQRCodeView(APIView):
 
 class QRScanView(APIView):
 
-    serializer_class = AssetSerializer
-
     permission_classes = [
         IsAuthenticated,
         IsAdminOrTechnician,
     ]
 
     @extend_schema(
-    responses={
-        200: AssetSerializer,
-    }
-)
-    
+        summary="Scan an asset QR code",
+        description=(
+            "Scans an asset QR token. The authenticated user must be "
+            "an Admin or Technician. A successful scan returns the "
+            "asset information and the latest active maintenance "
+            "assignment for the authenticated technician."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="token",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="The asset QR token.",
+            ),
+        ],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description="QR code scanned successfully.",
+            ),
+            403: OpenApiResponse(
+                description="QR code has been revoked.",
+            ),
+            404: OpenApiResponse(
+                description="Invalid QR code.",
+            ),
+        },
+        tags=["QR Code"],
+    )
     def post(self, request, token):
 
         try:
@@ -418,7 +609,7 @@ class QRScanView(APIView):
                         if asset.company
                         else None
                     ),
-                                    },
+                },
                 "maintenance": (
                     {
                         "id": maintenance.id,
@@ -461,13 +652,26 @@ class QRScanView(APIView):
             },
             status=200,
         )
-
-
+        
 # ============================================================
 # MAINTENANCE SCHEDULE
 # ADMIN ONLY
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="List maintenance schedules",
+    ),
+    post=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="Create maintenance schedule",
+        description=(
+            "Admin only. Creates a maintenance schedule "
+            "and automatically calculates the first maintenance date."
+        ),
+    ),
+)
 class MaintenanceScheduleListCreateView(
     generics.ListCreateAPIView
 ):
@@ -492,7 +696,6 @@ class MaintenanceScheduleListCreateView(
 
         asset = serializer.validated_data["asset"]
 
-        # Prevent duplicate schedules
         if MaintenanceSchedule.objects.filter(
             asset=asset
         ).exists():
@@ -505,7 +708,6 @@ class MaintenanceScheduleListCreateView(
             created_by=self.request.user
         )
 
-        # Automatically calculate first maintenance date
         schedule.next_maintenance_date = (
             schedule.calculate_next_date()
         )
@@ -517,6 +719,24 @@ class MaintenanceScheduleListCreateView(
         )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="Get maintenance schedule",
+    ),
+    put=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="Update maintenance schedule",
+    ),
+    patch=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="Partially update maintenance schedule",
+    ),
+    delete=extend_schema(
+        tags=["Maintenance Schedules"],
+        summary="Delete maintenance schedule",
+    ),
+)
 class MaintenanceScheduleDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
@@ -530,15 +750,30 @@ class MaintenanceScheduleDetailView(
         IsAdmin,
     ]
 
-
 # ============================================================
 # MAINTENANCE
 # ADMIN ONLY
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance"],
+        summary="List maintenance tasks",
+        description=(
+            "Admin sees all maintenance tasks. "
+            "Technicians see only their assigned maintenance."
+        ),
+    ),
+    post=extend_schema(
+        tags=["Maintenance"],
+        summary="Create maintenance task",
+        description="Admin only. Assigns maintenance to a technician.",
+    ),
+)
 class MaintenanceListCreateView(
     generics.ListCreateAPIView
 ):
+
     serializer_class = MaintenanceSerializer
 
     def get_permissions(self):
@@ -595,6 +830,25 @@ class MaintenanceListCreateView(
 # TECHNICIAN CREATE
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="List maintenance reports",
+        description=(
+            "Admin sees all reports. "
+            "Technicians see reports for their assigned maintenance. "
+            "Clients see reports associated with their work orders."
+        ),
+    ),
+    post=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Create maintenance report",
+        description=(
+            "Technicians can create reports for their assigned "
+            "maintenance tasks."
+        ),
+    ),
+)
 class MaintenanceReportListCreateView(
     generics.ListCreateAPIView
 ):
@@ -754,6 +1008,21 @@ class MaintenanceReportListCreateView(
 # ADMIN + TECHNICIAN + CLIENT
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Get maintenance report",
+    ),
+    put=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Update maintenance report",
+    ),
+    patch=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Partially update maintenance report",
+    ),
+)
+
 class MaintenanceReportDetailView(
     generics.RetrieveUpdateAPIView
 ):
@@ -799,9 +1068,29 @@ class MaintenanceReportDetailView(
 # ADMIN + CLIENT
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Work Orders"],
+        summary="List work orders",
+        description=(
+            "Admin sees all work orders. "
+            "Clients see their own work orders. "
+            "Technicians do not manage work orders."
+        ),
+    ),
+    post=extend_schema(
+        tags=["Work Orders"],
+        summary="Create work order",
+        description=(
+            "Admin or client can create a work order "
+            "according to their role."
+        ),
+    ),
+)
 class WorkOrderListCreateView(
     generics.ListCreateAPIView
 ):
+
     serializer_class = WorkOrderSerializer
 
     def get_permissions(self):
@@ -868,6 +1157,24 @@ class WorkOrderListCreateView(
             )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Work Orders"],
+        summary="Get work order",
+    ),
+    put=extend_schema(
+        tags=["Work Orders"],
+        summary="Update work order",
+    ),
+    patch=extend_schema(
+        tags=["Work Orders"],
+        summary="Partially update work order",
+    ),
+    delete=extend_schema(
+        tags=["Work Orders"],
+        summary="Delete work order",
+    ),
+)
 class WorkOrderDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
@@ -897,17 +1204,37 @@ class WorkOrderDetailView(
 # CLIENT MAINTENANCE REPORT REVIEW
 # ============================================================
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Accept or reject maintenance report",
+        description=(
+            "Allows a client to accept or reject a completed "
+            "maintenance report."
+        ),
+        request=MaintenanceReportReviewSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Maintenance report review processed successfully.",
+            ),
+            400: OpenApiResponse(
+                description="Invalid review or report cannot be reviewed.",
+            ),
+            403: OpenApiResponse(
+                description="User is not allowed to review this report.",
+            ),
+            404: OpenApiResponse(
+                description="Maintenance report not found.",
+            ),
+        },
+    ),
+)
 class MaintenanceReportReviewView(APIView):
 
-    serializer_class = MaintenanceReportReviewSerializer
 
     permission_classes = [
         IsAuthenticated,
     ]
-
-    @extend_schema(
-    request=MaintenanceReportReviewSerializer,
-)
 
     def post(self, request, pk):
 
@@ -1046,6 +1373,16 @@ class MaintenanceReportReviewView(APIView):
 # ADMIN - REJECTED MAINTENANCE REPORTS
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="List rejected maintenance reports",
+        description=(
+            "Admin only. Returns maintenance reports that were "
+            "rejected by clients and require administrative action."
+        ),
+    ),
+)
 class RejectedMaintenanceReportListView(
     generics.ListAPIView
 ):
@@ -1075,9 +1412,24 @@ class RejectedMaintenanceReportListView(
 # ADMIN + TECHNICIAN
 # ============================================================
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Maintenance"],
+        summary="Get maintenance task",
+    ),
+    put=extend_schema(
+        tags=["Maintenance"],
+        summary="Update maintenance task",
+    ),
+    patch=extend_schema(
+        tags=["Maintenance"],
+        summary="Partially update maintenance task",
+    ),
+)
 class MaintenanceDetailView(
     generics.RetrieveUpdateAPIView
 ):
+
     serializer_class = MaintenanceSerializer
 
     permission_classes = [
@@ -1141,20 +1493,38 @@ class MaintenanceDetailView(
 # ADMIN - REASSIGN MAINTENANCE
 # ============================================================
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Maintenance"],
+        summary="Reassign rejected maintenance",
+        description=(
+            "Admin only. Reassigns a rejected maintenance report "
+            "to another technician."
+        ),
+        request=MaintenanceReassignSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Maintenance reassigned successfully.",
+            ),
+            400: OpenApiResponse(
+                description="Invalid reassignment request.",
+            ),
+            404: OpenApiResponse(
+                description="Maintenance report not found.",
+            ),
+        },
+    ),
+)
 class MaintenanceReassignView(APIView):
 
 
-    serializer_class = MaintenanceReassignSerializer
+   
 
     permission_classes = [
         IsAuthenticated,
         IsAdmin,
     ]
-
-    @extend_schema(
-    request=MaintenanceReassignSerializer,
-)
-    
+ 
     def post(self, request, pk):
 
         try:
@@ -1257,20 +1627,41 @@ class MaintenanceReassignView(APIView):
 # ADMIN + ASSIGNED TECHNICIAN
 # ============================================================
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Maintenance Reports"],
+        summary="Upload maintenance report photo",
+        description=(
+            "Admin or the assigned technician can upload an image "
+            "to a maintenance report."
+        ),
+        request=MaintenanceReportPhotoUploadSerializer,
+        responses={
+            201: OpenApiResponse(
+                description="Maintenance report photo uploaded successfully.",
+            ),
+            400: OpenApiResponse(
+                description="Image or photo type is invalid.",
+            ),
+            403: OpenApiResponse(
+                description="User is not allowed to upload this photo.",
+            ),
+            404: OpenApiResponse(
+                description="Maintenance report not found.",
+            ),
+        },
+    ),
+)
 class MaintenanceReportPhotoUploadView(
     APIView
 ):
 
-    serializer_class = MaintenanceReportPhotoUploadSerializer
 
     permission_classes = [
         IsAuthenticated,
     ]
 
-    @extend_schema(
-    request=MaintenanceReportPhotoUploadSerializer,
-    
-)
+
     
     def post(self, request, pk):
 
@@ -1388,7 +1779,26 @@ class MaintenanceReportPhotoUploadView(
         )
 
 
-class ChangePasswordView(generics.GenericAPIView):
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Authentication"],
+        summary="Change password",
+        description="Changes the password of the currently authenticated user.",
+        request=ChangePasswordSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Password changed successfully.",
+            ),
+            400: OpenApiResponse(
+                description="Invalid password data.",
+            ),
+        },
+    ),
+)
+class ChangePasswordView(
+    generics.GenericAPIView
+):
+
     permission_classes = [
         IsAuthenticated,
     ]
@@ -1396,11 +1806,15 @@ class ChangePasswordView(generics.GenericAPIView):
     serializer_class = ChangePasswordSerializer
 
     def post(self, request):
+
         serializer = self.get_serializer(
             data=request.data
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True
+        )
+
         serializer.save()
 
         return Response(
@@ -1414,22 +1828,78 @@ class ChangePasswordView(generics.GenericAPIView):
 # CLIENT - ACCEPT / REJECT WORK ORDER
 # ============================================================
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Work Orders"],
+        summary="Accept or reject work order",
+        description=(
+            "Allows a client to accept or reject a work order."
+        ),
+        request=WorkOrderResponseSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Work order response processed successfully.",
+            ),
+            400: OpenApiResponse(
+                description="Work order cannot receive another response.",
+            ),
+            403: OpenApiResponse(
+                description="Only clients can respond to work orders.",
+            ),
+            404: OpenApiResponse(
+                description="Work order not found.",
+            ),
+        },
+    ),
+)
 class WorkOrderResponseView(APIView):
+
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        request=WorkOrderResponseSerializer,
-    )
+   
     def post(self, request, pk):
-        user = request.user
 
         # =====================================================
         # CLIENT ONLY
         # =====================================================
 
+        user = request.user
+
         if user.role != User.Role.CLIENT:
             raise PermissionDenied(
                 "Only clients can accept or reject work orders."
+            )
+
+        # =====================================================
+        # FIND WORK ORDER
+        # =====================================================
+
+        try:
+            work_order = (
+                WorkOrder.objects
+                .select_related(
+                    "client",
+                    "company",
+                    "asset",
+                )
+                .get(pk=pk)
+            )
+
+        except WorkOrder.DoesNotExist:
+            return Response(
+                {
+                    "detail": "Work order not found."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # =====================================================
+        # OWNERSHIP CHECK
+        # =====================================================
+
+        if work_order.client_id != user.id:
+            raise PermissionDenied(
+                "You can only respond to your own work orders."
             )
 
         # =====================================================
@@ -1445,124 +1915,83 @@ class WorkOrderResponseView(APIView):
         )
 
         action = serializer.validated_data["action"]
+
         comment = serializer.validated_data.get(
             "comment",
-            ""
+            "",
         ).strip()
 
         # =====================================================
-        # FIND WORK ORDER
-        # =====================================================
-
-        try:
-            work_order = (
-                WorkOrder.objects
-                .select_related(
-                    "client",
-                    "company",
-                    "asset",
-                )
-                .get(
-                    pk=pk,
-                    client=user,
-                )
-            )
-
-        except WorkOrder.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Work order not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # =====================================================
-        # CHECK CLIENT RESPONSE STATUS
+        # ONLY PENDING RESPONSES CAN BE ANSWERED
         # =====================================================
 
         if (
             work_order.client_response
             != WorkOrder.ClientResponse.PENDING
         ):
-            return Response(
+            raise ValidationError(
                 {
                     "detail": (
                         "This work order has already "
                         "received a client response."
                     )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                }
             )
 
         # =====================================================
-        # CHECK WORK ORDER STATUS
+        # ACCEPT
         # =====================================================
 
-        if work_order.status in [
-            WorkOrder.Status.COMPLETED,
-            WorkOrder.Status.CANCELLED,
-        ]:
-            return Response(
-                {
-                    "detail": (
-                        "This work order can no longer "
-                        "receive a client response."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        if action == "ACCEPT":
+
+            work_order.client_response = (
+                WorkOrder.ClientResponse.ACCEPTED
+            )
+
+            message = (
+                "Work order accepted successfully."
             )
 
         # =====================================================
-        # PROCESS RESPONSE
+        # REJECT
         # =====================================================
 
-        with transaction.atomic():
+        elif action == "REJECT":
 
-            if action == "ACCEPT":
-
-                work_order.client_response = (
-                    WorkOrder.ClientResponse.ACCEPTED
+            if not comment:
+                raise ValidationError(
+                    {
+                        "comment": (
+                            "A comment is required "
+                            "when rejecting a work order."
+                        )
+                    }
                 )
 
-                # Keep the work order itself pending until
-                # the technician actually starts the work.
-                work_order.status = (
-                    WorkOrder.Status.PENDING
-                )
-
-                message = (
-                    "Work order accepted successfully."
-                )
-
-            else:
-
-                work_order.client_response = (
-                    WorkOrder.ClientResponse.REJECTED
-                )
-
-                # A rejected work order remains pending from
-                # the lifecycle perspective until admin/technician
-                # decides what to do with it.
-                work_order.status = (
-                    WorkOrder.Status.PENDING
-                )
-
-                message = (
-                    "Work order rejected successfully."
-                )
-
-            work_order.client_response_comment = comment
-            work_order.client_responded_at = timezone.now()
-
-            work_order.save(
-                update_fields=[
-                    "client_response",
-                    "status",
-                    "client_response_comment",
-                    "client_responded_at",
-                    "updated_at",
-                ]
+            work_order.client_response = (
+                WorkOrder.ClientResponse.REJECTED
             )
+
+            message = (
+                "Work order rejected successfully."
+            )
+
+        # =====================================================
+        # SAVE RESPONSE
+        # =====================================================
+
+        work_order.client_response_comment = comment
+
+        work_order.client_responded_at = timezone.now()
+
+        work_order.save(
+            update_fields=[
+                "client_response",
+                "client_response_comment",
+                "client_responded_at",
+                "updated_at",
+            ]
+        )
 
         # =====================================================
         # RESPONSE
