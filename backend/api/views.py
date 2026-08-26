@@ -96,7 +96,6 @@ class CompanyDetailView(
 class MeView(APIView):
     permission_classes = [
         IsAuthenticated,
-        IsAdminOrTechnician,
     ]
 
     def get(self, request):
