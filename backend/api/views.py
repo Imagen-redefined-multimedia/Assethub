@@ -409,7 +409,16 @@ class QRScanView(APIView):
                     "description": asset.description,
                     "client": asset.client.id,
                     "client_username": asset.client.username,
-                },
+                    "qr_active": asset.qr_active,
+                    "qr_created_at": asset.qr_created_at,
+                    "qr_revoked_at": asset.qr_revoked_at,
+                    "last_qr_scan_at": asset.last_qr_scan_at,
+                    "company_name": (
+                        asset.company.name
+                        if asset.company
+                        else None
+                    ),
+                                    },
                 "maintenance": (
                     {
                         "id": maintenance.id,
