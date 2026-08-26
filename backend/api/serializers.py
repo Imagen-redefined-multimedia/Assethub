@@ -708,6 +708,8 @@ class WorkOrderSerializer(serializers.ModelSerializer):
             "description",
             "status",
 
+
+            "client_response",
             "client_response_comment",
             "client_responded_at",
 
@@ -721,6 +723,7 @@ class WorkOrderSerializer(serializers.ModelSerializer):
             "client_username",
             "asset_name",
 
+            "client_response",
             "client_response_comment",
             "client_responded_at",
 
