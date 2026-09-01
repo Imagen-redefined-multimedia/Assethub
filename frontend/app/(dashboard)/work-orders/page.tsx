@@ -2028,29 +2028,6 @@ function ClientResponseModal({
               </p>
             </div>
           )}
-        <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-4">
-          <p className="text-xs leading-5 text-blue-300">
-            Your response will be recorded
-            against this work order and
-            made available to the operations
-            team.
-          </p>
-        </div>
-
-        <ModalActions
-          saving={
-            saving
-          }
-          submitText={
-            action ===
-            "ACCEPT"
-              ? "Accept Work Order"
-              : "Reject Work Order"
-          }
-          onClose={
-            onClose
-          }
-        />
       </form>
     </ModalShell>
   );

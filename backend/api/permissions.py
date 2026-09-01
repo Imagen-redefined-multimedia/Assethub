@@ -98,3 +98,28 @@ class IsAdminOrOwnCompany(BasePermission):
             )
 
         return False
+
+class IsAdminOrAssignedTechnician(BasePermission):
+    message = "You do not have permission to access this maintenance task."
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in [
+                User.Role.ADMIN,
+                User.Role.TECHNICIAN,
+            ]
+        )
+
+    def has_object_permission(self, request, view, obj):
+        # Admin can access everything
+        if request.user.role == User.Role.ADMIN:
+            return True
+
+        # Technician can only access maintenance
+        # assigned to them
+        if request.user.role == User.Role.TECHNICIAN:
+            return obj.technician == request.user
+
+        return False

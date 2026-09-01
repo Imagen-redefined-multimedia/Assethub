@@ -335,6 +335,7 @@ class MaintenanceReportPhotoSerializer(
 
         fields = [
             "id",
+             "report_id",
             "image",
             "photo_type",
             "uploaded_at",
@@ -342,6 +343,7 @@ class MaintenanceReportPhotoSerializer(
 
         read_only_fields = [
             "id",
+             "report_id",
             "uploaded_at",
         ]
 

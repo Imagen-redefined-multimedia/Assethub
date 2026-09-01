@@ -5,6 +5,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 class Company(models.Model):
     name = models.CharField(max_length=255)
@@ -330,6 +331,14 @@ class Maintenance(models.Model):
 
     def __str__(self):
         return f"Maintenance #{self.id}"
+
+    def clean(self):
+   
+
+        if self.technician and self.technician.role != User.Role.TECHNICIAN:
+            raise ValidationError({
+                "technician": "Only users with the TECHNICIAN role can be assigned."
+            })
 
 
 class MaintenanceReport(models.Model):

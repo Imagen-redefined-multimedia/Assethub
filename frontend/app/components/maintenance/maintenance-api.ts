@@ -6,7 +6,6 @@ import { apiFetch, apiJson } from "@/lib/api";
 
 export interface MaintenanceReportPhoto {
   id: number;
-  report_id: number;
   image: string;
   photo_type: "ISSUE" | "FIXED";
   uploaded_at: string;
