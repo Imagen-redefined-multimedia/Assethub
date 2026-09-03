@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "corsheaders",
+    "storages",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
@@ -252,13 +253,30 @@ ASSETHUB_BASE_URL = os.environ.get(
 
 
 # ============================================================
-# MEDIA
+# SUPABASE STORAGE
 # ============================================================
 
-MEDIA_URL = "/media/"
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
-MEDIA_ROOT = BASE_DIR / "media"
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.environ.get(
+    "AWS_STORAGE_BUCKET_NAME",
+    "maintenance-reports",
+)
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
 
 # ============================================================
 # PRODUCTION SECURITY
