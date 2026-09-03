@@ -1521,6 +1521,8 @@ class MaintenanceDetailView(
         },
     ),
 )
+
+
 class MaintenanceReassignView(APIView):
 
 

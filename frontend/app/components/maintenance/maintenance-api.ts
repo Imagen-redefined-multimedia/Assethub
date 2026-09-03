@@ -180,3 +180,62 @@ export async function reviewMaintenanceReport(
 
   return data;
 }
+
+// ============================================================
+// GET REJECTED REPORTS
+// ============================================================
+
+export async function getRejectedMaintenanceReports(): Promise<
+  MaintenanceReport[]
+> {
+  const data = await apiJson<
+    MaintenanceReport[] | MaintenanceReportResponse
+  >("/api/maintenance-reports/rejected/");
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return data.results ?? [];
+}
+
+// ============================================================
+// REASSIGN MAINTENANCE
+// ============================================================
+
+export interface ReassignMaintenanceResponse {
+  message: string;
+  report_id: number;
+  maintenance_id: number;
+  technician: number;
+  technician_username: string;
+  status: string;
+  reassignment_count: number;
+}
+
+export async function reassignMaintenance(
+  reportId: number,
+  technicianId: number
+): Promise<ReassignMaintenanceResponse> {
+  const response = await apiFetch(
+    `/api/maintenance-reports/${reportId}/reassign/`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        technician: technicianId,
+      }),
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.detail ||
+        data?.technician?.[0] ||
+        "Failed to reassign maintenance."
+    );
+  }
+
+  return data;
+}
