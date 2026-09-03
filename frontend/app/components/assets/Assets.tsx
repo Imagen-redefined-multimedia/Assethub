@@ -556,6 +556,7 @@ useEffect(() => {
               search.trim()
             )}
             onAdd={openCreateModal}
+            isAdmin={isAdmin}
           />
         ) : (
           <AssetTable

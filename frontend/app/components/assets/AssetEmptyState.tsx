@@ -1,11 +1,14 @@
 type AssetEmptyStateProps = {
   hasSearch: boolean;
   onAdd: () => void;
+  isAdmin: boolean;
+  
 };
 
 export default function AssetEmptyState({
   hasSearch,
   onAdd,
+  isAdmin
 }: AssetEmptyStateProps) {
   return (
     <div className="p-12 text-center">
@@ -25,7 +28,7 @@ export default function AssetEmptyState({
           : "Create your first asset to get started."}
       </p>
 
-      {!hasSearch && (
+      {!hasSearch && isAdmin &&(
         <button
           type="button"
           onClick={onAdd}

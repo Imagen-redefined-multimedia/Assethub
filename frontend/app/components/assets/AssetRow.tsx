@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+
 import type { Asset } from "@/types/asset";
 
 type AssetRowProps = {
@@ -8,7 +9,6 @@ type AssetRowProps = {
   qrLoading: number | null;
   onEdit: (asset: Asset) => void;
   onDelete: (asset: Asset) => void;
-  
   isAdmin: boolean;
   isTechnician: boolean;
   isClient: boolean;
@@ -25,9 +25,7 @@ export default function AssetRow({
 }: AssetRowProps) {
   const router = useRouter();
 
-  const initial = asset.name
-    .charAt(0)
-    .toUpperCase();
+  const initial = asset.name.charAt(0).toUpperCase();
 
   return (
     <tr className="transition hover:bg-slate-800/30">
@@ -76,34 +74,64 @@ export default function AssetRow({
       {/* Actions */}
       <td className="px-6 py-5">
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              router.push(`/assets/qr/${asset.id}`)
-            }
-            disabled={!asset.qr_active}
-            className="rounded-lg border border-blue-900/60 px-3 py-2 text-xs font-medium text-blue-400 transition hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {qrLoading === asset.id
-              ? "Generating..."
-              : "QR Code"}
-          </button>
 
-          <button
-            type="button"
-            onClick={() => onEdit(asset)}
-            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
-          >
-            Edit
-          </button>
+          {/* ADMIN ACTIONS */}
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(`/assets/qr/${asset.id}`)
+                }
+                disabled={!asset.qr_active}
+                className="rounded-lg border border-blue-900/60 px-3 py-2 text-xs font-medium text-blue-400 transition hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {qrLoading === asset.id
+                  ? "Generating..."
+                  : "QR Code"}
+              </button>
 
-          <button
-            type="button"
-            onClick={() => onDelete(asset)}
-            className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
-          >
-            Delete
-          </button>
+              <button
+                type="button"
+                onClick={() => onEdit(asset)}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+              >
+                Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onDelete(asset)}
+                className="rounded-lg border border-red-900/60 px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-950/40"
+              >
+                Delete
+              </button>
+            </>
+          )}
+
+          {/* TECHNICIAN ACTIONS */}
+          {isTechnician && (
+            <button
+              type="button"
+              onClick={() =>
+                router.push("/assets/qr-scanner")
+              }
+              className="rounded-lg border border-emerald-900/60 px-3 py-2 text-xs font-medium text-emerald-400 transition hover:bg-emerald-950/40"
+            >
+              Scan QR
+            </button>
+          )}
+
+          {/* CLIENT ACTIONS */}
+          {isClient && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+            >
+              View
+            </button>
+          )}
+
         </div>
       </td>
     </tr>
