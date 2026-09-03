@@ -1,11 +1,12 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import Sidebar from "../components/navbar/Sidebar";
 import Navbar from "../components/navbar/Navbar";
+import { logout } from "@/lib/api";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -31,6 +32,10 @@ export default function DashboardLayout({
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = useCallback(() => {
+  setSidebarOpen(false);
+}, []);
 
   useEffect(() => {
     async function loadUser() {
@@ -90,9 +95,9 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <Sidebar
         user={user}
-        onLogout={handleLogout}
+        onLogout={logout}
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={closeSidebar}
       />
 
       {/* Main area */}
