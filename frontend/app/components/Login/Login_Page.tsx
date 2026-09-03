@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, type SubmitEvent } from "react";
+import Image from "next/image";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -60,112 +61,116 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6">
-      <div className="w-full max-w-md">
+<main
+  className="relative flex min-h-screen items-center justify-center bg-cover bg-center bg-no-repeat px-6"
+  style={{
+    backgroundImage: "url('/background-04.svg')",
+  }}
+>
+  {/* Dark overlay */}
+  <div className="absolute inset-0 bg-slate-950/50" />
 
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white">
-            Imagen AssetHub
-          </h1>
+  {/* Login content */}
+  <div className="relative z-10 w-full max-w-md">
+    {/* Header */}
+    <div className="mb-8 flex justify-center">
+      <Image
+        src="/logoName-04.svg"
+        alt="AssetHub Logo"
+        width={200}
+        height={100}
+        priority
+        style={{
+          width: "200px",
+          height: "auto",
+        }}
+      />
+    </div>
 
-          <p className="mt-2 text-slate-400">
-            Branded Asset Life Cycle Management
-          </p>
-        </div>
+    {/* Login Card */}
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-900/95 p-8 shadow-2xl backdrop-blur-sm">
+      <h2 className="text-2xl font-semibold text-white">
+        Sign in
+      </h2>
 
-        {/* Login Card */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+      <p className="mt-2 text-sm text-slate-400">
+        Enter your AssetHub credentials.
+      </p>
 
-          <h2 className="text-2xl font-semibold text-white">
-            Sign in
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-400">
-            Enter your AssetHub credentials.
-          </p>
-
-          <form
-            onSubmit={handleLogin}
-            className="mt-6 space-y-5"
+      <form
+        onSubmit={handleLogin}
+        className="mt-6 space-y-5"
+      >
+        {/* Username */}
+        <div>
+          <label
+            htmlFor="username"
+            className="mb-2 block text-sm font-medium text-slate-300"
           >
+            Username
+          </label>
 
-            {/* Username */}
-            <div>
-              <label
-                htmlFor="username"
-                className="mb-2 block text-sm font-medium text-slate-300"
-              >
-                Username
-              </label>
-
-              <input
-                id="username"
-                name="username"
-                type="text"
-                value={username}
-                onChange={(event) =>
-                  setUsername(event.target.value)
-                }
-                required
-                autoComplete="username"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter username"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-medium text-slate-300"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
-                required
-                autoComplete="current-password"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter password"
-              />
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div
-                role="alert"
-                className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300"
-              >
-                {error}
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-
-          </form>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+            autoComplete="username"
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter username"
+          />
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          AssetHub Management System
-        </p>
+        {/* Password */}
+        <div>
+          <label
+            htmlFor="password"
+            className="mb-2 block text-sm font-medium text-slate-300"
+          >
+            Password
+          </label>
 
-      </div>
-    </main>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            autoComplete="current-password"
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter password"
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
+    </div>
+
+    <p className="mt-6 text-center text-xs text-slate-400">
+      AssetHub Management System
+    </p>
+  </div>
+</main>
   );
 }
 
