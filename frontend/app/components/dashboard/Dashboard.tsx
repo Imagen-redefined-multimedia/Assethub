@@ -29,6 +29,7 @@ export default function DashboardLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -98,13 +99,25 @@ export default function DashboardLayout({
       <Sidebar
         user={user}
         onLogout={logout}
+         isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="ml-72 min-h-screen">
+      <div className="min-h-screen lg:ml-72">
+        <div className="flex h-16 items-center border-b border-slate-800 bg-slate-950 px-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-xl text-white transition hover:bg-slate-800"
+            aria-label="Open navigation"
+          >
+            ☰
+          </button>
+        </div>
 
         <Navbar />
 
-        <main className="p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
 
