@@ -276,7 +276,8 @@ AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
-AWS_QUERYSTRING_AUTH = False
+AWS_QUERYSTRING_AUTH = True
+AWS_S3_SIGNATURE_VERSION = "s3v4"
 
 # ============================================================
 # PRODUCTION SECURITY
