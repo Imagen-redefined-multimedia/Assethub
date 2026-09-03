@@ -128,7 +128,7 @@ export default function AssetQRScannerPage() {
 
     setStarting(true);
 
-    router.push(`/maintenance/${maintenance.id}`);
+    router.push(`/maintenance/create?maintenance=${maintenance.id}`);
   }
 
   function goBackToAssets() {
