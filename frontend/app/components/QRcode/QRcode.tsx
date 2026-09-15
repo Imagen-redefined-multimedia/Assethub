@@ -68,6 +68,14 @@ export default function AssetQRScannerPage() {
     let cancelled = false;
 
     async function verifyQR() {
+      const accessToken = localStorage.getItem("access_token");
+
+      // Not authenticated → leave AssetHub and go to Facebook
+      if (!accessToken) {
+        window.location.href = "https://www.facebook.com/ImagenRedefinedMultimedia";
+        return;
+      }
+
       try {
         setLoading(true);
         setError("");
