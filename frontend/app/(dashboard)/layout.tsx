@@ -75,7 +75,7 @@ export default function DashboardLayout({
   function handleLogout() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    router.replace("/login");
+    router.replace("/");
   }
 
   if (loading) {

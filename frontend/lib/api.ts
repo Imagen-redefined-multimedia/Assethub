@@ -40,6 +40,15 @@ function redirectToLogin() {
     window.location.replace("/login");
   }
 }
+function redirectToHome() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (window.location.pathname !== "/") {
+    window.location.replace("/");
+  }
+}
 
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
@@ -268,6 +277,6 @@ function extractApiError(
 
 export function logout() {
   clearAuthentication();
-  redirectToLogin();
+  redirectToHome();
 }
 
