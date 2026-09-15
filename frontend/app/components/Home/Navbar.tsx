@@ -24,7 +24,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="relative w-full">
+    <nav className="absolute top-0 left-0 z-50 w-full">
       <div className="flex h-20 w-full items-center justify-between px-6 lg:px-10">
 
         {/* Logo */}
@@ -59,17 +59,17 @@ export default function Navbar() {
         {/* Desktop CTA */}
         <div className="hidden items-center gap-3 md:flex">
           <Link
-            href="/demo"
+            href="/get-started"
             className="rounded-md border border-white px-4 py-2 transition hover:border-[#55fdfe] hover:bg-[#55fdfe] hover:text-black"
           >
-            Request a Demo
+            Get Started
           </Link>
 
           <Link
-            href="/get-started"
+            href="/login"
             className="rounded-md bg-[#55fdfe] px-4 py-2 text-black transition hover:bg-white"
           >
-            Get Started
+            Log In
           </Link>
         </div>
 
