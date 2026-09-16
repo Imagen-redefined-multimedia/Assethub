@@ -1,3 +1,4 @@
+from rest_framework.permissions import AllowAny
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
@@ -28,6 +29,8 @@ from .models import (
     QRScanLog,
     MaintenanceReport,
     MaintenanceReportPhoto,
+    QuoteRequest,
+    QuoteRequest,
     WorkOrder,
 )
 
@@ -48,6 +51,8 @@ from .serializers import (
     MaintenanceScheduleSerializer,
     MaintenanceSerializer,
     ProfileSerializer,
+    QuoteRequestSerializer,
+    QuoteRequestSerializer,
     UserCreateSerializer,
     UserSerializer,
     AssetSerializer,
@@ -2025,3 +2030,15 @@ class WorkOrderResponseView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+@extend_schema(
+    tags=["Quote Requests"],
+    summary="Submit a quote request",
+    description="Public endpoint for submitting an AssetHub quote request.",
+    request=QuoteRequestSerializer,
+    responses={201: QuoteRequestSerializer},
+)
+class QuoteRequestCreateView(generics.CreateAPIView):
+    queryset = QuoteRequest.objects.all()
+    serializer_class = QuoteRequestSerializer
+    permission_classes = [AllowAny]

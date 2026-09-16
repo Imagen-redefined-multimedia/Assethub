@@ -10,6 +10,7 @@ from .models import (
     MaintenanceReport,
     MaintenanceReportPhoto,
     MaintenanceSchedule,
+    QuoteRequest,
     WorkOrder,
 )
 
@@ -909,3 +910,25 @@ class WorkOrderResponseSerializer(serializers.Serializer):
         attrs["comment"] = comment
 
         return attrs
+
+class QuoteRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuoteRequest
+        fields = [
+            "id",
+            "full_name",
+            "company_name",
+            "email",
+            "phone",
+            "package",
+            "number_of_assets",
+            "number_of_users",
+            "requirements",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "status",
+            "created_at",
+        ]

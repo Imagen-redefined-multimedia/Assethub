@@ -510,3 +510,57 @@ class QRScanLog(models.Model):
 
     def __str__(self):
         return f"QR scan #{self.id} - {self.result}"
+
+class QuoteRequest(models.Model):
+    class Status(models.TextChoices):
+        NEW = "NEW", "New"
+        CONTACTED = "CONTACTED", "Contacted"
+        QUOTED = "QUOTED", "Quoted"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        DECLINED = "DECLINED", "Declined"
+
+    class Package(models.TextChoices):
+        STARTER = "STARTER", "Starter"
+        BUSINESS = "BUSINESS", "Business"
+        ENTERPRISE = "ENTERPRISE", "Enterprise"
+
+    full_name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True)
+
+    package = models.CharField(
+        max_length=20,
+        choices=Package.choices,
+    )
+
+    number_of_assets = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    number_of_users = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    requirements = models.TextField(
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.NEW,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def __str__(self):
+        return f"{self.company_name} - {self.get_package_display()}"

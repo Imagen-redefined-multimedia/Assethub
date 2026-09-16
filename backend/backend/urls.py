@@ -27,6 +27,7 @@ from api.views import (
     # Companies
     CompanyListCreateView,
     CompanyDetailView,
+    QuoteRequestCreateView,
 
     # Users
     UserListCreateView,
@@ -313,6 +314,12 @@ urlpatterns = [
         WorkOrderResponseView.as_view(),
         name="work-order-response",
     ),
+
+    path(
+    "api/quote-requests/",
+    QuoteRequestCreateView.as_view(),
+    name="quote-request-create",
+),
 ]
 
 
