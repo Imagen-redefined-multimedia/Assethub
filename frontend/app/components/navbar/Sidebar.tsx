@@ -227,7 +227,7 @@ function getNavigation(
         },
         {
           label: "QR Scanner",
-          href: "/assets/qr-scanner",
+          href: "/qr-scanner",
           icon: "▦",
         },
         {
@@ -251,7 +251,7 @@ function getNavigation(
       return [
         {
           label: "QR Scanner",
-          href: "/assets/qr-scanner",
+          href: "/qr-scanner",
           icon: "▦",
         },
         {
