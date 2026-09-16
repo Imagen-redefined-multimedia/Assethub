@@ -432,7 +432,6 @@ class AssetQRCodeView(APIView):
             f"/qr-scanner/{asset.qr_token}"
         )
 
-        print("QR URL:", qr_url)
 
         qr = qrcode.QRCode(
             version=1,

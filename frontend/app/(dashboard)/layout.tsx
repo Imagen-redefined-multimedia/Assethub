@@ -37,7 +37,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   const isQRScannerRoute =
-    pathname.startsWith("/assets/qr-scanner/");
+    pathname.startsWith("/qr-scanner/");
 
     
   const [user, setUser] = useState<User | null>(null);
