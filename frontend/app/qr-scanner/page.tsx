@@ -74,6 +74,10 @@ export default function QRScannerPage() {
              * We extract the token from the URL.
              */
 
+            /* Give the camera time to fully shut down*/
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+
             let token = "";
 
             try {
