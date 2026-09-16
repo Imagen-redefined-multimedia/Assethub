@@ -7,26 +7,27 @@ export type PricingPackage = {
 
 export const pricingPackages: PricingPackage[] = [
   {
-    name: "Starter",
+    name: "Essential",
     description: "Essential asset management for small teams.",
     features: [
-      "Asset Management",
+      "Asset Registration",
+      "Schedule inspections",
       "QR Code Tracking",
-      "Basic Maintenance Management",
-      "User Management",
+      "Condition Reporting",
+      "Basic maintenance tracking",
     ],
   },
   {
-    name: "Business",
+    name: "Professional",
     description:
       "Complete asset and maintenance management for growing organizations.",
     popular: true,
     features: [
-      "Everything in Starter",
-      "Work Orders",
-      "Maintenance Reports",
-      "Maintenance Schedules",
-      "Advanced Asset Tracking",
+      "Everything in Essential",
+      "Maintenance schedules",
+      "Work orders",
+      "Maintenance reports",
+      "Asset condition history",
     ],
   },
   {
@@ -34,11 +35,12 @@ export const pricingPackages: PricingPackage[] = [
     description:
       "A flexible solution for organizations with advanced requirements.",
     features: [
-      "Everything in Business",
-      "Custom Workflows",
+      "Everything in Professional",
+      "Multi-site asset management",
       "Advanced Reporting",
-      "Custom Integrations",
-      "Dedicated Support",
+      "Custom workflows",
+      "SLA management",
+      "Lifecycle planning"
     ],
   },
 ];
