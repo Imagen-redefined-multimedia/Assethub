@@ -113,11 +113,11 @@ export default function QRScannerPage() {
               return;
             }
 
-            router.push(
+            window.location.href =
               `/qr-scanner/${encodeURIComponent(
                 token
               )}`
-            );
+            ;
           },
           () => {
             /*
