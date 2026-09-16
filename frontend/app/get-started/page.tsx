@@ -1,13 +1,18 @@
 "use client";
 
+
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 
 import PricingCard from "@/app/components/Home/PricingCard";
 import { pricingPackages } from "@/app/components/Home/PricingData";
+import { apiJson } from "@/lib/api";
 
 export default function GetStartedPage() {
   const [selectedPackage, setSelectedPackage] = useState("Business");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     fullName: "",
@@ -19,7 +24,7 @@ export default function GetStartedPage() {
     requirements: "",
   });
 
-  const [submitted, setSubmitted] = useState(false);
+
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -32,17 +37,54 @@ export default function GetStartedPage() {
     }));
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  e.preventDefault();
 
-    console.log({
-      ...form,
-      package: selectedPackage,
+  setSubmitted(false);
+  setError("");
+  setSubmitting(true);
+
+  try {
+    await apiJson("/api/quote-requests/", {
+      method: "POST",
+      body: JSON.stringify({
+        full_name: form.fullName,
+        company_name: form.companyName,
+        email: form.email,
+        phone: form.phone,
+        package: selectedPackage.toUpperCase(),
+        number_of_assets: form.assets
+          ? Number(form.assets)
+          : null,
+        number_of_users: form.users
+          ? Number(form.users)
+          : null,
+        requirements: form.requirements,
+      }),
+      skipRefresh: true,
     });
 
     setSubmitted(true);
-  }
 
+    setForm({
+      fullName: "",
+      companyName: "",
+      email: "",
+      phone: "",
+      assets: "",
+      users: "",
+      requirements: "",
+    });
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Something went wrong. Please try again."
+    );
+  } finally {
+    setSubmitting(false);
+  }
+}
   return (
     <main className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -209,10 +251,16 @@ export default function GetStartedPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#55fdfe] px-6 py-4 font-semibold text-black transition hover:bg-[#55fdfe]/80"
+                disabled={submitting}
+                className="w-full rounded-xl bg-[#55fdfe] px-6 py-4 font-semibold text-black transition hover:bg-[#55fdfe]/80 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Request a Quote
+                {submitting ? "Submitting..." : "Request a Quote"}
               </button>
+              {error && (
+                <div className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
 
               {submitted && (
                 <div className="rounded-xl border border-green-400/20 bg-green-400/5 p-4 text-sm text-green-300">
