@@ -27,6 +27,7 @@ from api.views import (
     # Companies
     CompanyListCreateView,
     CompanyDetailView,
+    QuoteRequestAdminView,
     QuoteRequestCreateView,
 
     # Users
@@ -319,6 +320,12 @@ urlpatterns = [
     "api/quote-requests/",
     QuoteRequestCreateView.as_view(),
     name="quote-request-create",
+),
+
+path(
+    "api/quote-requests/admin/",
+    QuoteRequestAdminView.as_view(),
+    name="quote-request-admin",
 ),
 ]
 

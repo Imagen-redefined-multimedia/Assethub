@@ -206,6 +206,11 @@ function getNavigation(
           icon: "⌂",
         },
         {
+          label: "Quote Requests",
+          href: "/quote-requests",
+          icon: "✉",
+        },
+        {
           label: "Companies",
           href: "/companies",
           icon: "▣",
@@ -245,6 +250,7 @@ function getNavigation(
           href: "/rejected-reports",
           icon: "⚠",
         },
+
       ];
 
     case "TECHNICIAN":

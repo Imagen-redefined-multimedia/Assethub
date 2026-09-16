@@ -932,3 +932,39 @@ class QuoteRequestSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
+
+class QuoteRequestAdminSerializer(serializers.ModelSerializer):
+    package_display = serializers.CharField(
+        source="get_package_display",
+        read_only=True,
+    )
+    status_display = serializers.CharField(
+        source="get_status_display",
+        read_only=True,
+    )
+
+    class Meta:
+        model = QuoteRequest
+        fields = [
+            "id",
+            "full_name",
+            "company_name",
+            "email",
+            "phone",
+            "package",
+            "package_display",
+            "number_of_assets",
+            "number_of_users",
+            "requirements",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "package_display",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]

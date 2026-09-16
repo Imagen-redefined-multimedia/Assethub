@@ -51,6 +51,7 @@ from .serializers import (
     MaintenanceScheduleSerializer,
     MaintenanceSerializer,
     ProfileSerializer,
+    QuoteRequestAdminSerializer,
     QuoteRequestSerializer,
     QuoteRequestSerializer,
     UserCreateSerializer,
@@ -2043,3 +2044,8 @@ class QuoteRequestCreateView(generics.CreateAPIView):
     queryset = QuoteRequest.objects.all()
     serializer_class = QuoteRequestSerializer
     permission_classes = [AllowAny]
+
+class QuoteRequestAdminView(generics.ListUpdateAPIView):
+    queryset = QuoteRequest.objects.all().order_by("-created_at")
+    serializer_class = QuoteRequestAdminSerializer
+    permission_classes = [IsAdmin]
