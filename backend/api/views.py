@@ -429,7 +429,7 @@ class AssetQRCodeView(APIView):
 
         qr_url = (
             f"{settings.ASSETHUB_FRONTEND_URL}"
-            f"/assets/qr-scanner/{asset.qr_token}"
+            f"/qr-scanner/{asset.qr_token}"
         )
 
         print("QR URL:", qr_url)
