@@ -1,8 +1,16 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { 
+    ReactNode,
+    useCallback,
+    useEffect, 
+    useState 
+  } from "react";
 
-import { useRouter } from "next/navigation";
+import { 
+  useRouter, 
+  usePathname,
+} from "next/navigation";
 
 import Sidebar from "../components/navbar/Sidebar";
 import Navbar from "../components/navbar/Navbar";
@@ -26,7 +34,12 @@ export default function DashboardLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
+  const isQRScannerRoute =
+    pathname.startsWith("/assets/qr-scanner/");
+
+    
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +52,10 @@ export default function DashboardLayout({
 
   useEffect(() => {
     async function loadUser() {
+      if (isQRScannerRoute) {
+        return;
+      }
+      
       const token = localStorage.getItem("access_token");
 
       if (!token) {
@@ -70,13 +87,17 @@ export default function DashboardLayout({
     }
 
     loadUser();
-  }, [router]);
+  }, [router, isQRScannerRoute]);
 
   function handleLogout() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     router.replace("/");
   }
+
+  if (isQRScannerRoute) {
+  return <>{children}</>;
+}
 
   if (loading) {
     return (
