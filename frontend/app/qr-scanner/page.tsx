@@ -110,7 +110,7 @@ export default function QRScannerPage() {
             }
 
             router.push(
-              `/assets/qr-scanner/${encodeURIComponent(
+              `/qr-scanner/${encodeURIComponent(
                 token
               )}`
             );
@@ -174,7 +174,7 @@ export default function QRScannerPage() {
         .catch(() => {});
     }
 
-    router.push("/assets");
+    router.push("/");
   }
 
   return (
@@ -328,7 +328,7 @@ export default function QRScannerPage() {
             onClick={goBack}
             className="w-full rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
           >
-            Back to Assets
+            Back to Dashboard
           </button>
         </div>
       </section>
