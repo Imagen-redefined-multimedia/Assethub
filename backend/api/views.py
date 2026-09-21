@@ -2045,7 +2045,13 @@ class QuoteRequestCreateView(generics.CreateAPIView):
     serializer_class = QuoteRequestSerializer
     permission_classes = [AllowAny]
 
-class QuoteRequestAdminView(generics.ListUpdateAPIView):
+class QuoteRequestAdminListView(generics.ListAPIView):
     queryset = QuoteRequest.objects.all().order_by("-created_at")
+    serializer_class = QuoteRequestAdminSerializer
+    permission_classes = [IsAdmin]
+
+
+class QuoteRequestAdminDetailView(generics.RetrieveUpdateAPIView):
+    queryset = QuoteRequest.objects.all()
     serializer_class = QuoteRequestAdminSerializer
     permission_classes = [IsAdmin]

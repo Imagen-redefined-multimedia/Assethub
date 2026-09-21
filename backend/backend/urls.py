@@ -27,6 +27,9 @@ from api.views import (
     # Companies
     CompanyListCreateView,
     CompanyDetailView,
+    QuoteRequestAdminDetailView,
+    QuoteRequestAdminListView,
+    QuoteRequestAdminListView,
     QuoteRequestAdminView,
     QuoteRequestCreateView,
 
@@ -324,8 +327,14 @@ urlpatterns = [
 
 path(
     "api/quote-requests/admin/",
-    QuoteRequestAdminView.as_view(),
-    name="quote-request-admin",
+    QuoteRequestAdminListView.as_view(),
+    name="quote-request-admin-list",
+),
+
+path(
+    "api/quote-requests/admin/<int:pk>/",
+    QuoteRequestAdminDetailView.as_view(),
+    name="quote-request-admin-detail",
 ),
 ]
 
