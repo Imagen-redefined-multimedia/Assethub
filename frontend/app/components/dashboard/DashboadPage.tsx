@@ -62,6 +62,7 @@ export default function DashboardPage() {
             workOrdersData,
             schedulesData,
             reportsData,
+            quotesData,
           ] = await Promise.all([
             apiJson<Company[]>("/api/companies/"),
             apiJson<User[]>("/api/users/"),
@@ -73,6 +74,9 @@ export default function DashboardPage() {
             apiJson<MaintenanceReport[]>(
               "/api/maintenance-reports/"
             ),
+            apiJson<QuoteRequest[]>(
+                "/api/quote-requests/admin/"
+              ),
           ]);
 
           setCompanies(companiesData);
@@ -81,6 +85,7 @@ export default function DashboardPage() {
           setWorkOrders(workOrdersData);
           setSchedules(schedulesData);
           setReports(reportsData);
+          setQuotes(quotesData);
         }
 
         if (currentUser.role === "CLIENT") {
@@ -88,22 +93,18 @@ export default function DashboardPage() {
             assetsData,
             workOrdersData,
             reportsData,
-            quotesData,
           ] = await Promise.all([
             apiJson<Asset[]>("/api/assets/"),
             apiJson<WorkOrder[]>("/api/work-orders/"),
             apiJson<MaintenanceReport[]>(
               "/api/maintenance-reports/"
             ),
-            apiJson<QuoteRequest[]>(
-                "/api/quote-requests/admin/"
-              ),
+            
           ]);
 
           setAssets(assetsData);
           setWorkOrders(workOrdersData);
           setReports(reportsData);
-          setQuotes(quotesData);
         }
 
         if (currentUser.role === "TECHNICIAN") {
