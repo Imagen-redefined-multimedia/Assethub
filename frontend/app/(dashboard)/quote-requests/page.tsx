@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiJson } from "@/lib/api";
 
 type QuoteRequest = {
@@ -32,6 +33,8 @@ export default function QuoteRequestsPage() {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const router = useRouter();
 
   useEffect(() => {
     loadQuotes();
@@ -161,9 +164,12 @@ export default function QuoteRequestsPage() {
                 <tbody>
                   {quotes.map((quote) => (
                     <tr
-                      key={quote.id}
-                      className="border-b border-white/5 last:border-b-0"
-                    >
+                        key={quote.id}
+                        onClick={() =>
+                          router.push(`/quotes/${quote.id}`)
+                        }
+                        className="cursor-pointer border-b border-white/5 transition hover:bg-white/[0.03] last:border-b-0"
+                      >
                       <td className="px-6 py-5">
                         <p className="font-medium text-white">
                           {quote.company_name}
@@ -201,16 +207,15 @@ export default function QuoteRequestsPage() {
                       </td>
 
                       <td className="px-6 py-5">
-                        <select
-                          value={quote.status}
-                          onChange={(e) =>
-                            updateStatus(
-                              quote.id,
-                              e.target.value
-                            )
-                          }
-                          className="rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-[#55fdfe]"
-                        >
+                       <select
+                            value={quote.status}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              updateStatus(quote.id, e.target.value);
+                            }}
+                            className="rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-[#55fdfe]"
+                          >       
                           {statuses.map((status) => (
                             <option
                               key={status}
