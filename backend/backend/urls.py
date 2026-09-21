@@ -30,7 +30,6 @@ from api.views import (
     QuoteRequestAdminDetailView,
     QuoteRequestAdminListView,
     QuoteRequestAdminListView,
-    QuoteRequestAdminView,
     QuoteRequestCreateView,
 
     # Users
