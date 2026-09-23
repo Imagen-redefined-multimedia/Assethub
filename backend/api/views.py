@@ -7,7 +7,7 @@ from drf_spectacular.utils import (
     OpenApiResponse,
 )
 
-from .email_utils import send_quote_request_email, send_quote_status_email
+from .email_utils import send_quote_received_email, send_quote_status_email
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -2051,7 +2051,7 @@ class QuoteRequestCreateView(generics.CreateAPIView):
         quote = serializer.save()
 
         # Send email to admin
-        send_quote_request_email(quote)
+        send_quote_received_email(quote)
 
 class QuoteRequestAdminListView(generics.ListAPIView):
     queryset = QuoteRequest.objects.all().order_by("-created_at")
